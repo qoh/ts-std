@@ -120,7 +120,7 @@ function MapInstance::copy(%this)
 	%map = Map(%this.__refer);
 
 	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
-		%map.set(%this.__keys.value[%i], %this.__value[%this.__keys.value[%i]]);
+		%map.set(%this.__keys.value[%i], %this.__value[%this.__keys.value[%i]], %this.__type[%this.__keys.value[%i]]);
 
 	return %map;
 }
@@ -138,6 +138,7 @@ function MapInstance::clear(%this)
 			%this.setAttribute(%key, "");
 
 		%this.__value[%key] = "";
+		%this.__type[%key] = "";
 	}
 
 	%this.__keys.clear();
@@ -191,6 +192,7 @@ function MapInstance::pop(%this, %key, %default)
 	{
 		%value = %this.__value[%key];
 		%this.__value[%key] = "";
+		%this.__type[%key] = "";
 
 		if (Map::__isSafe(%key))
 			setattr(%this, %key, "");
@@ -205,7 +207,7 @@ function MapInstance::pop(%this, %key, %default)
 function MapInstance::patch(%this, %map)
 {
 	for (%i = 0; %i < %map.__keys.length; %i = (%i + 1) | 0)
-		%this.set(%map.__keys.value[%i], %map.__value[%map.__keys.value[%i]]);
+		%this.set(%map.__keys.value[%i], %map.__value[%map.__keys.value[%i]], %map.__type[%map.__keys.value[%i]]);
 }
 
 function MapInstance::keys(%this)
