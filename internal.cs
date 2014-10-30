@@ -22,7 +22,12 @@ function _qsort(%v, %left, %right, %cmp)
 	_qsort(%v, %last + 1, %right, %cmp);
 }
 
-function _safeattrtail(%attr)
+function _safeid(%attr)
+{
+	return stripos("_abcdefghijklmnopqrstuvwxyz", getSubStr(%attr, 0, 1)) != -1 && _safeidtail(%attr);
+}
+
+function _safeidtail(%attr)
 {
 	%len = strlen(%attr);
 
