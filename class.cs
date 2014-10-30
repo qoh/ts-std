@@ -5,7 +5,7 @@ function Class(%name, %base)
 		return %name.getID();
 	}
 
-	if (!isFunction(%name) && Map::__isSafe(%name)) // need general-purpose identifier test
+	if (!isFunction(%name) && _safeid(%name))
 	{
 		for (%i = 0; %i < 20; %i++)
 		{
