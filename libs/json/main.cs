@@ -5,10 +5,16 @@ function JSON::parse(%text)
 
 	%scan = JSON::scan(%text, 0, %len);
 
-	if (%scan $= "" || getWord(%scan, 0) != %len)
+	if (!%scan || %scan.end != %len)
+	{
+		%scan.delete();
 		return "";
+	}
+	
+	%value = %scan.value;
+	%scan.delete();
 
-	return restWords(%scan);
+	return %value;
 }
 
 function JSON::serialize(%value, %type)
@@ -29,7 +35,7 @@ function JSON::serialize(%value, %type)
 				if (%i > 0)
 					%text = ",";
 
-				%text = %text @ json::serialize(%value.value[%i]);
+				%text = %text @ json::serialize(%value.value[%i], %value.type[%i]);
 			}
 
 			return "[" @ %text @ "]";
@@ -37,9 +43,10 @@ function JSON::serialize(%value, %type)
 		case "map":
 			for (%i = 0; %i < %value.__keys.length; %i = (%i + 1) | 0)
 			{
-				%text = %text @ json::serialize(%value.__keys.value[%i], "string");
+				%key = %value.__keys.value[%i];
+				%text = %text @ json::serialize(%key, "string");
 				%text = %text @ ":";
-				%text = %text @ json::serialize(%value.__value[%value.__keys.value[%i]]);
+				%text = %text @ json::serialize(%value.__value[%key], %value.__type[%key]);
 			}
 
 			return "{" @ %text @ "}";
@@ -128,6 +135,16 @@ function JSON::type(%text)
 	return "string";
 }
 
+function JSON::_result(%end, %type, %value)
+{
+	return new ScriptObject()
+	{
+		end = %end;
+		type = %type;
+		value = %value;
+	};
+}
+
 function JSON::scan(%text, %i, %len)
 {
 	%i = JSON::skipSpacing(%text, %i, %len);
@@ -139,7 +156,8 @@ function JSON::scan(%text, %i, %len)
 		{
 			// TODO: Optimize by tracking last character in %escaped
 			if (getSubStr(%text, %j, 1) $= "\"" && getSubStr(%blob, %j - 1, 1) !$= "\\")
-				return %j + 1 SPC collapseEscape(getSubStr(%text, %i, %j - %i));
+				//return %j + 1 SPC collapseEscape(getSubStr(%text, %i, %j - %i));
+				return JSON::_result(%j + 1, "string" collapseEscape(getSubStr(%text, %i, %j - %i)));
 		}
 
 		return "";
@@ -152,13 +170,13 @@ function JSON::scan(%text, %i, %len)
 		return JSON::scanMap(%text, %i + 1, %len);
 
 	if (strcmp("null", getSubStr(%text, %i, 4)) == 0)
-		return %i + 4 SPC "";
+		return JSON::_result(%i + 4, "null");
 
 	if (strcmp("true", getSubStr(%text, %i, 4)) == 0)
-		return %i + 4 SPC 1;
+		return JSON::_result(%i + 4, "bool", 1);
 
 	if (strcmp("false", getSubStr(%text, %i, 5)) == 0)
-		return %i + 5 SPC 0;
+		return JSON::_result(%i + 5, "bool", 0);
 
 	return JSON::scanNumber(%text, %i, %len);
 }
@@ -184,7 +202,7 @@ function JSON::scanNumber(%text, %i, %length)
 		if (%chr $= ".")
 		{
 			if (%radix || !%first)
-				return "";
+				return 0;
 
 			%radix = 1;
 			%first = 0;
@@ -196,12 +214,12 @@ function JSON::scanNumber(%text, %i, %length)
 	}
 
 	if (!%first || %j - %i < 1)
-		return "";
+		return 0;
 
 	if (%zero && %j - %i > 1)
-		return "";
+		return 0;
 
-	return %j SPC getSubStr(%text, %i, %j - %i);
+	return JSON::_result(%j, "number", getSubStr(%text, %i, %j - %i));
 }
 
 function JSON::skipSpacing(%text, %i, %length)
