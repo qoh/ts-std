@@ -122,7 +122,7 @@ function FunctionIterator::copy(%this)
 
 function FunctionIterator::hasNext(%this)
 {
-	return call(%this.hasNext, %this.context);
+	return %this.hasNext $= "" || call(%this.hasNext, %this.context);
 }
 
 function FunctionIterator::next(%this)
@@ -215,25 +215,67 @@ function _isentinel_next(%ctx)
 	return %next;
 }
 
-// imap(seq, func)
-function imap(%seq, %func)
+// all(Iterable seq)
+// Test if all values yielded by *seq* are true.
+function all(%seq)
 {
-	if (assert(Callable::isValid(%func), "func is not callable")) return 0;
-	if (assert(%iter = iter(%seq), "seq is not iterable")) return 0;
+	if (assert(%iter = iter(%seq), "seq is not iterable"))
+		return "";
 
-	return FunctionIterator(_imap_hasNext, _imap_next,
-		new ScriptObject()
+	while (%iter.hasNext())
+	{
+		if (!bool(%iter.next()))
 		{
-			class = Struct;
-			iter = %iter;
-			func = %func;
-		});
+			%iter.delete();
+			return 0;
+		}
+	}
+
+	%iter.delete();
+	return 1;
 }
 
-function _imap_hasNext(%ctx) { %ctx.iter.hasNext(); }
-function _imap_next(%ctx)    { return Callable::call(%ctx.func, %ctx.iter.next()); }
+// any(Iterable seq)
+// Test if any values yielded by *seq* are true.
+function any(%seq)
+{
+	if (assert(%iter = iter(%seq), "seq is not iterable"))
+		return "";
 
-// enumerate(seq, start = 0)
+	while (%iter.hasNext())
+	{
+		if (bool(%iter.next()))
+		{
+			%iter.delete();
+			return 1;
+		}
+	}
+
+	%iter.delete();
+	return 0;
+}
+
+// apply(Callable func, Iterable seq)
+// Call *func* for each value from *seq*.
+function apply(%func, %seq)
+{
+	if (assert(Callable::isValid(%func), "func is not callable")) return;
+	if (assert(%iter = iter(%seq), "seq is not iterable")) return;
+
+	while (%iter.hasNext())
+		Callable::call(%func, %iter.next());
+
+	%iter.delete();
+}
+
+// enumerate(Iterable seq, number start = 0)
+// Transform the iterable *seq* into an iterator yielding (index, value) pairs.
+//
+// Example:
+//
+//     // Display ASCII character codes next to actual characters.
+//     %codes = enumerate(imap(chr, range(256)));
+//     apply(echo, imap(repr, %codes));
 function enumerate(%seq, %start)
 {
 	if (assert(%iter = iter(%seq), "seq is not iterable"))
@@ -251,10 +293,19 @@ function enumerate(%seq, %start)
 function _enumerate_hasNext(%ctx) { return %ctx.iter.hasNext(); }
 function _enumerate_next(%ctx)    { return Tuple::fromArgs(%ctx.i++, %ctx.iter.next()); }
 
-// filter(seq, func)
-function filter(%seq, %func)
+// filter(Callable func, Iterable seq)
+// Make an iterator yielding the values from *seq* for which *func* returns a true result.
+// If *func* is "", the raw values will be evaluated instead.
+//
+// Example:
+//
+//     // Iterate through non-empty elements of %array
+//     filter(len, %array)
+//     // Iterate through truthy elements of %array
+//     filter("", %array)
+function filter(%func, %seq)
 {
-	if (assert(Callable::isValid(%func), "func is not callable")) return "";
+	if (assert(%func $= "" || Callable::isValid(%func), "func is not callable")) return "";
 	if (assert(%iter = iter(%seq), "seq is not iterable")) return "";
 
 	return FunctionIterator(_filter_hasNext, _filter_next,
@@ -275,7 +326,7 @@ function _filter_hasNext(%ctx)
 	{
 		%next = %ctx.iter.next();
 
-		if (bool(Callable::call(%ctx.func, %next)))
+		if (bool(%ctx.func $= "" ? %next : Callable::call(%ctx.func, %next)))
 		{
 			%ctx.cached = 1;
 			%ctx.next = ref(%next);
@@ -296,15 +347,33 @@ function _filter_next(%ctx)
 	return %next;
 }
 
+// imap(Callable func, Iterable seq)
+// Create an iterator that computes *func* for each value yielded by iterating over *seq*.
+function imap(%func, %seq)
+{
+	if (assert(Callable::isValid(%func), "func is not callable")) return 0;
+	if (assert(%iter = iter(%seq), "seq is not iterable")) return 0;
+
+	return FunctionIterator(_imap_hasNext, _imap_next,
+		new ScriptObject()
+		{
+			class = Struct;
+			iter = %iter;
+			func = %func;
+		});
+}
+
+function _imap_hasNext(%ctx) { %ctx.iter.hasNext(); }
+function _imap_next(%ctx) { return Callable::call(%ctx.func, %ctx.iter.next()); }
+
 // range(start = 0, end, step = 1)
+// Make an iterator that yields values from *start* to *end*,
+// in increments of *step*.
 function range(%start, %end, %step)
 {
 	if (%step $= "")
 		%step = 1;
 
-	if (%start $= "" && %end $= "")
-		return Iterator();
-	
 	if (%end $= "")
 	{
 		%end = %start;
@@ -322,6 +391,9 @@ function range(%start, %end, %step)
 
 function _range_hasNext(%ctx)
 {
+	if (%ctx.end $= "*")
+		return 1;
+
 	return %ctx.step < 0 ? (%ctx.value > %ctx.end) : (%ctx.value < %ctx.end);
 }
 
@@ -332,8 +404,14 @@ function _range_next(%ctx)
 	return %value;
 }
 
-// reduce(seq, func, [start])
-function reduce(%seq, %func, %start)
+// reversed(Iterable seq)
+function reversed(%seq)
+{
+	console.error("reversed() is not implemented");
+}
+
+// reduce(Callable func, Iterable seq, [start])
+function reduce(%func, %seq, %start)
 {
 	if (assert(Callable::isValid(%func), "func is not callable")) return "";
 	if (assert(%iter = iter(%seq), "seq is not iterable")) return "";
@@ -353,57 +431,6 @@ function reduce(%seq, %func, %start)
 	return %start;
 }
 
-// apply(seq, func)
-function apply(%seq, %func)
-{
-	if (assert(Callable::isValid(%func), "func is not callable")) return "";
-	if (assert(%iter = iter(%seq), "seq is not iterable")) return "";
-
-	while (%iter.hasNext())
-		%last = Callable::call(%func, %iter.next());
-
-	%iter.delete();
-	return %last;
-}
-
-// all(seq)
-function all(%seq)
-{
-	if (assert(%iter = iter(%seq), "seq is not iterable"))
-		return "";
-
-	while (%iter.hasNext())
-	{
-		if (!bool(%iter.next()))
-		{
-			%iter.delete();
-			return 0;
-		}
-	}
-
-	%iter.delete();
-	return 1;
-}
-
-// any(seq)
-function any(%seq)
-{
-	if (assert(%iter = iter(%seq), "seq is not iterable"))
-		return "";
-
-	while (%iter.hasNext())
-	{
-		if (bool(%iter.next()))
-		{
-			%iter.delete();
-			return 1;
-		}
-	}
-
-	%iter.delete();
-	return 0;
-}
-
 // join(seq, separator = " ")
 function join(%seq, %separator)
 {
@@ -420,4 +447,282 @@ function join(%seq, %separator)
 
 	%iter.delete();
 	return %text;
+}
+
+// sorted(Iterable seq, [Callable cmp])
+function sorted(%seq, %cmp)
+{
+	console.error("sorted() is not implemented");
+}
+
+// permutations(Iterable seq, int r = len(seq))
+function permutations(%seq, %r)
+{
+	if (%r !$= "" && %r < 1)
+		return Iterator();
+
+	if (assert(%iter = iter(%seq), "seq is not iterable"))
+		return 0;
+
+	if (!%iter.hasNext())
+	{
+		%iter.delete();
+		return Iterator();
+	}
+
+	%struct = new ScriptObject()
+	{
+		class = Struct;
+		n = 0;
+		r = %r;
+	};
+
+	while (%iter.hasNext())
+	{
+		%struct.value[%struct.n] = ref(%iter.next());
+
+		if (%struct.n++ > %r)
+		{
+			%struct.delete();
+			%iter.delete();
+			return Iterator();
+		}
+	}
+
+	if (%r $= "")
+		%struct.r = %struct.n;
+
+	%iter.delete();
+	%struct.cycles = ref(Tuple(range(%n, %n - %r, -1)));
+	return FunctionIterator(_permutations_hasNext, _permutations_next, %struct);
+}
+
+function _permutations_hasNext(%ctx)
+{
+	if (!%ctx.first)
+		return 1;
+
+	return 0; // TODO
+}
+
+function _permutations_next(%ctx)
+{
+	%result = tempref(new ScriptObject()
+	{
+		class = Tuple;
+		length = %ctx.r;
+	});
+
+	if (!%ctx.first)
+	{
+		%ctx.first = 1;
+
+		for (%i = 0; %i < %ctx.r; %i++)
+			%result.value[%i] = %ctx.value[%i];
+
+		return %result;
+	}
+
+	// TODO
+}
+
+// zip(...Iterable seqs)
+function zip(
+	%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
+	%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18, %a19)
+{
+	for (%count = 20; %count > 0; %count--)
+	{
+		if (%a[%count - 1] $= "")
+			break;
+	}
+
+	%ctx = new ScriptObject()
+	{
+		class = Struct;
+		count = %count;
+	};
+
+	for (%i = 0; %i < %count; %i++)
+	{
+		if (assert(%iter = iter(%a[%i]), "seqs[" @ %i @ "] is not iterable"))
+		{
+			for (%j = 0; %j < %i; %j++)
+				%ctx.iter[%j].delete();
+
+			%ctx.delete();
+			return 0;
+		}
+
+		%ctx.iter[%i] = ref(%iter);
+	}
+
+	return FunctionIterator(_zip_hasNext, _zip_next, %ctx);
+}
+
+function _zip_hasNext(%ctx)
+{
+	for (%i = 0; %i < %ctx.count; %i++)
+	{
+		if (!%ctx.iter[%i].hasNext())
+			return 0;
+	}
+
+	return 1;
+}
+
+function _zip_next(%ctx)
+{
+	%tuple = new ScriptObject()
+	{
+		class = Tuple;
+		length = %ctx.count;
+	};
+
+	for (%i = 0; %i < %ctx.count; %i++)
+		%tuple.value[%i] = ref(%ctx.iter[%i].next());
+
+	return tempref(%tuple);
+}
+
+// iter::chain(Iterable seqs)
+function iter::chain(%seqs)
+{
+	if (assert(%iter = iter(%seqs), "seqs is not iterable"))
+		return 0;
+
+	if (!%seqs.hasNext())
+		return Iterator();
+
+	return FunctionIterator(_iter_chain_hasNext, _iter_chain_next,
+		new ScriptObject()
+		{
+			class = Struct;
+			iter = %iter;
+			skip = 0;
+		});
+}
+
+function _iter_chain_hasNext(%ctx)
+{
+	// this is probably wrong?
+	while (!%ctx.curr || !%ctx.curr.hasNext())
+	{
+		if (!%ctx.iter.hasNext())
+			return 0;
+
+		%ctx.curr = ref(%ctx.iter.next());
+	}
+	
+	return %ctx.curr && %ctx.curr.hasNext();
+}
+
+function _iter_chain_next(%ctx)
+{
+	return %ctx.curr.next();
+}
+
+// iter::compress(Iterable seq, Iterable which)
+function iter::compress(%seq, %which)
+{
+	if (assert(%seq = iter(%seq)), "seq is not iterable")
+		return 0;
+
+	if (assert(%which = iter(%which)), "which is not iterable")
+	{
+		%seq.delete();
+		return 0;
+	}
+
+	return new ScriptObject(_iter_compress_hasNext, _iter_compress_next,
+		new ScriptObject()
+		{
+			class = Struct;
+			seq = %seq;
+			which = %which;
+		});
+}
+
+function _iter_compress_hasNext(%ctx)
+{
+	return %ctx.next || (%ctx.next = %ctx.seq.hasNext() && %ctx.which.hasNext() && bool(%ctx.which.next()));
+}
+
+function _iter_compress_next(%ctx)
+{
+	return %ctx.seq.next();
+}
+
+// iter::count(number start = 0, number step = 1)
+function iter::count(%start, %step)
+{
+	return FunctionIterator("", _iter_count_next,
+		new ScriptObject()
+		{
+			class = Struct;
+			next = %start - %step;
+			step = %step $= "" ? 1 : %step;
+		});
+}
+
+function _iter_count_next(%ctx)
+{
+	return %ctx.next += %step;
+}
+
+// iter::repeat(any value, [int times])
+function iter::repeat(%value, %times)
+{
+	return FunctionIterator(_repeat_hasNext, _repeat_next,
+		new ScriptObject()
+		{
+			class = Struct;
+			value = %value;
+			times = %times;
+		});
+}
+
+function _repeat_hasNext(%ctx)
+{
+	return %ctx.times $= "" || %ctx.index < %ctx.times;
+}
+
+function _repeat_next(%ctx)
+{
+	if (%ctx.times !$= "")
+		%ctx.index = (%ctx.index + 1) | 0;
+
+	return %ctx.value;
+}
+
+// iter::takeWhile(Callable func, Iterable seq)
+// Make an iterator that returns values from *seq* as long as
+// *func* is true for each value.
+function iter::takeWhile(%func, %seq)
+{
+	if (assert(Callable::isValid(%func), "func is not callable")) return 0;
+	if (assert(%iter = iter(%seq), "seq is not iterable")) return 0;
+
+	return FunctionIterator(_takeWhile_hasNext, _takeWhile_next,
+		new ScriptObject()
+		{
+			class = Struct;
+			func = %func;
+			iter = %iter;
+		});
+}
+
+function _takeWhile_hasNext(%ctx)
+{
+	return !%ctx.ended && %ctx.iter.hasNext();
+}
+
+function _takeWhile_next(%ctx)
+{
+	%next = %ctx.iter.next();
+
+	if (!bool(Callable::call(%ctx.func, %next)))
+		%ctx.ended = 1;
+
+	return %next;
 }

@@ -127,6 +127,13 @@ function type(%obj)
 //////
 // ### Generalized operations
 
+// pass(any value)
+// Returns *value*, for use in functional iterators.
+function pass(%value)
+{
+	return %value;
+}
+
 function bool(%a)
 {
 	if (%a $= "" || %a $= "0")
@@ -246,6 +253,19 @@ function len(%a)
 	{
 		if (%a.hasMethod("__len__"))
 			return %a.call("__len__");
+
+		if (%a.superClass $= "Iterable" || %a.class $= "Iterable")
+		{
+			%len = 0;
+
+			while (%a.hasNext())
+			{
+				%len = (%len + 1) | 0;
+				%a.next();
+			}
+
+			return %len;
+		}
 
 		return 0;
 	}

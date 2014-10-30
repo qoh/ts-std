@@ -319,10 +319,10 @@ function chr(%ord)
 	if ((%ord != %ord | 0) || %ord < 0 || %ord >= 256)
 		return "";
 
-	if (!$_chr_cache)
-		_chr_cache();
+	if (!$_ascii_cache)
+		_ascii_cache();
 
-	return $_chr_cache[%ord];
+	return $_ascii_value[%ord];
 }
 
 function ord(%chr)
@@ -330,22 +330,19 @@ function ord(%chr)
 	if (%chr $= "")
 		return 0;
 
-	if (strlen(%chr) != 1)
-		return "";
+	if (!$_ascii_cache)
+		_ascii_cache();
 
-	if (!$_chr_cache)
-		_chr_cache();
+	// need case-sensitivity. [] isn't.
+	%pos = stripos("abcdefghijklmnopqrstuvwxyz", %chr = getSubStr(%chr, 0, 1));
 
-	for (%i = 1; %i < 256; %i++)
-	{
-		if (strcmp($_chr_cache[%i], %chr) == 0)
-			return %i;
-	}
+	if (%pos != -1)
+		return (strcmp(%chr, strupr(%chr)) == 0 ? 65 : 97) + %pos;
 
-	return 0;
+	return $_ascii_index[%chr];
 }
 
-function _chr_cache()
+function _ascii_cache()
 {
 	%hex = "0123456789abcdef";
 
@@ -353,11 +350,11 @@ function _chr_cache()
 	{
 		for (%j = 0; %j < 16; %j++)
 		{
-			%a = getSubStr(%hex, %i, 1);
-			%b = getSubStr(%hex, %j, 1);
-			$_chr_cache[%i * 16 + %j] = collapseEscape("\\x" @ %a @ %b);
+			%value = collapseEscape("\\x" @ getSubStr(%hex, %i, 1) @ getSubStr(%hex, %j, 1));
+			$_ascii_value[%i * 16 + %j] = %value;
+			$_ascii_index[%value] = %i * 16 + %j;
 		}
 	}
 
-	$_schr_cache = 1;
+	$_ascii_cache = 1;
 }
