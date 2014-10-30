@@ -49,7 +49,8 @@ function Map::__isSafe(%key)
 		%key $= "class" || %key $= "superClass" ||
 		%key $= "__refer" || %key $= "__keys" ||
 		%key $= "___ref" || %key $= "___ref_sched" ||
-		getSubStr(%key, 0, 7) $= "__value"
+		getSubStr(%key, 0, 7) $= "__value" ||
+		getSubStr(%key, 0, 6) $= "__type"
 	);
 }
 
@@ -128,10 +129,15 @@ function MapInstance::clear(%this)
 {
 	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
 	{
+		%key = %this.__keys.value[%i];
+		
 		if (%this.__refer)
-			unref(%this.__value[%this.__keys.value[%i]]);
+			unref(%this.__value[%key]);
+		
+		if (Map::__isSafe(%key))
+			%this.setAttribute(%key, "");
 
-		%this.__value[%this.__keys.value[%i]] = "";
+		%this.__value[%key] = "";
 	}
 
 	%this.__keys.clear();
@@ -145,7 +151,12 @@ function MapInstance::get(%this, %key, %default)
 	return %default;
 }
 
-function MapInstance::set(%this, %key, %value)
+function MapInstance::getType(%this, %key)
+{
+	return %this.__type[%key];
+}
+
+function MapInstance::set(%this, %key, %value, %type)
 {
 	if (!%this.__keys.contains(%key))
 		%this.__keys.append(%key);
@@ -156,6 +167,7 @@ function MapInstance::set(%this, %key, %value)
 		ref(%value);
 
 	%this.__value[%key] = %value;
+	%this.__type[%key] = %value;
 
 	if (Map::__isSafe(%key))
 		setattr(%this, %key, %value);
@@ -163,10 +175,10 @@ function MapInstance::set(%this, %key, %value)
 	return %value;
 }
 
-function MapInstance::setDefault(%this, %key, %value)
+function MapInstance::setDefault(%this, %key, %value, %type)
 {
 	if (!%this.__keys.contains(%key))
-		%this.set(%key, %value);
+		%this.set(%key, %value, %type);
 
 	return %this.__value[%key];
 }
