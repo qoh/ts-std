@@ -139,24 +139,26 @@ function ArrayInstance::clear(%this)
 			unref(%this.value[%i]);
 
 		%this.value[%i] = "";
+		%this.type[%i] = "";
 	}
 
 	%this.length = 0;
 	return %this;
 }
 
-function ArrayInstance::append(%this, %value)
+function ArrayInstance::append(%this, %value, %type)
 {
 	if (%this._refer)
 		ref(%value);
 
 	%this.value[%this.length] = %value;
+	%this.type[%this.length] = %type;
 	%this.length = (%this.length + 1) | 0;
 
 	return %this;
 }
 
-function ArrayInstance::insert(%this, %index, %value)
+function ArrayInstance::insert(%this, %index, %value, %type)
 {
 	if (assert(%index >= 0 && %index < %this.length, "invalid array index"))
 		return;
@@ -165,10 +167,14 @@ function ArrayInstance::insert(%this, %index, %value)
 		ref(%value);
 
 	for (%i = %this.length; %i > %index; %i = (%i - 1) | 0)
+	{
 		%this.value[%i] = %this.value[(%i - 1) | 0];
+		%this.type[%i] = %this.type[(%i - 1) | 0];
+	}
 
 	%this.length = (%this.length + 1) | 0;
 	%this.value[%index] = %value;
+	%this.type[%index] = %type;
 
 	return %this;
 }
@@ -192,10 +198,14 @@ function ArrayInstance::pop(%this, %i)
 		unref(%value);
 
 	for (0; %i < %this.length; %i = (%i + 1) | 0)
+	{
 		%this.value[%i] = %this.value[(%i + 1) | 0];
+		%this.type[%i] = %this.type[(%i + 1) | 0];
+	}
 
 	%this.length = (%this.length - 1) | 0;
 	%this.value[%this.length] = "";
+	%this.type[%this.length] = "";
 
 	return %value;
 }
@@ -244,6 +254,10 @@ function ArrayInstance::swap(%this, %i, %j)
 	%temp = %this.value[%i];
 	%this.value[%i] = %this.value[%j];
 	%this.value[%j] = %temp;
+	
+	%temp = %this.type[%i];
+	%this.type[%i] = %this.type[%j];
+	%this.type[%j] = %temp;
 
 	return %this;
 }
