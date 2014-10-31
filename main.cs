@@ -28,15 +28,16 @@ else
 
 exec("./internal.cs");
 exec("./generic.cs");
+exec("./iterators.cs");
+exec("./callable.cs");
 exec("./string.cs");
-exec("./iter.cs");
-exec("./class.cs");
+//exec("./class.cs");
+exec("./class_new.cs");
 exec("./event.cs");
 exec("./console.cs");
 exec("./tcp.cs");
 exec("./file.cs");
 
-exec("./types/Callable.cs");
 exec("./types/Struct.cs");
 exec("./types/Array.cs");
 exec("./types/ByteArray.cs");

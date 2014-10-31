@@ -1,8 +1,3 @@
-$_consolelogger_hack1 = !$_consolelogger_hack1;
-
-if (!$_consolelogger_hack1)
-	exec($Con::File);
-
 if (!isObject(console))
 {
 	new ScriptObject(console)
@@ -12,79 +7,6 @@ if (!isObject(console))
 		groupText = "";
 		groupDepth = 0;
 	};
-}
-
-function console::trace(%this)
-{
-	if ($_consolelogger_hack2 $= "")
-		$_consolelogger_hack2 = 0;
-	else
-		$_consolelogger_hack2++;
-
-	%file = "config/trace.txt";
-	%log = new ConsoleLogger("", %file, false);
-
-	backTrace();
-
-	%log.detach();
-	%log.delete();
-
-	if (!isFile(%file))
-		return "";
-
-	%fp = new FileObject();
-	%fp.openForRead(%file);
-
-	while (!%fp.isEOF())
-	{
-		if (%first)
-			%out = %out @ "\n";
-
-		%first = 1;
-		%out = %out @ %fp.readLine();
-
-		for (%i = 0; %i < $_consolelogger_hack2 && !%fp.isEOF(); %i++)
-			%fp.readLine();
-	}
-
-	%fp.close();
-	%fp.delete();
-
-	echo("=======");
-	echo(%out);
-}
-
-function console::capture(%this, %callable)
-{
-	//%file = "base/temp/console-" @ (%this.capture = (%this.capture + 1) | 0) @ ".log";
-	%file = "config/capture.txt";
-	%log = new ConsoleLogger("", %file, false);
-
-	//Callable::call(%callable);
-	backTrace();
-
-	%log.detach();
-	%log.delete();
-
-	if (!isFile(%file))
-		return "";
-
-	%fp = new FileObject();
-	%fp.openForRead(%file);
-
-	while (!%fp.isEOF())
-	{
-		%out = %out @ %fp.readLine() @ "\n";
-
-		for (%i = 0; %i < 12 || %fp.isEOF(); %i++)
-			%fp.readLine();
-	}
-
-	%fp.close();
-	%fp.delete();
-
-	//fileDelete(%file);
-	return %out;
 }
 
 function console::write(%this, %text, %label)
@@ -107,15 +29,17 @@ function console::write(%this, %text, %label)
 		%width_first -= %label_len;
 	}
 
-	%text = %indent @ %text;
 	%len = strlen(%text);
 
 	if (%len >= %width_first)
 	{
-		%text = %text @ %label; // to be implemented
+		// line wrapping
+		%text = %ident @ %text @ %label; // to be implemented
 	}
 	else if (%label !$= "")
-		%text = %text @ repeat(" ", 2 + (%width_first + strlen(%indent) - %len)) @ %label;
+	{
+		%text = %ident @ %text @ repeat(" ", 2 + (%width_first + strlen(%indent) - %len)) @ %label;
+	}
 
 	if (%this.groupDepth)
 		%this.groupText = %this.groupText @ %text @ "\n";
@@ -137,7 +61,7 @@ function console::children(%this, %obj)
 		%tag = %child.___ref $= "" ? "\c1no ref" : %child.___ref SPC "refs";
 		%tag = getSubStr(%tag, 0, %taglen);
 
-		console.log(%tag @ repeat(" ", (%taglen + 1) - strlen(%tag)) @ "\c0" @ repr(%child));
+		console.log(%tag @ repeat(" ", (%taglen + 1) - strlen(stripColorChars(%tag))) @ "\c0" @ repr(%child));
 	}
 
 	console.endGroup();
@@ -146,20 +70,6 @@ function console::children(%this, %obj)
 function console::repr(%this, %value)
 {
 	%this.log(repr(%value));
-}
-
-function console::iter(%this, %value)
-{
-	if (assert(%iter = iter(%value), "value is not iterable"))
-		return;
-
-	console.group(repr(%value));
-
-	while (%iter.hasNext())
-		console.repr(%iter.next());
-
-	%iter.delete();
-	console.endGroup();
 }
 
 function console::log(%this,

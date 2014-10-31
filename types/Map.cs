@@ -152,7 +152,7 @@ function MapInstance::get(%this, %key, %default)
 	return %default;
 }
 
-function MapInstance::getType(%this, %key)
+function MapInstance::getKeyType(%this, %key)
 {
 	return %this.__type[%key];
 }
@@ -171,7 +171,7 @@ function MapInstance::set(%this, %key, %value, %type)
 	%this.__type[%key] = %value;
 
 	if (Map::__isSafe(%key))
-		setattr(%this, %key, %value);
+		%this.setAttribute(%key, %value);
 
 	return %value;
 }
@@ -195,7 +195,7 @@ function MapInstance::pop(%this, %key, %default)
 		%this.__type[%key] = "";
 
 		if (Map::__isSafe(%key))
-			setattr(%this, %key, "");
+			%this.setAttribute(%key, "");
 
 		%this.__keys.pop(%index);
 		return %value;

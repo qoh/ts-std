@@ -25,18 +25,21 @@ function EventEmitter::sendEvent(%this, %event,
 	if (!isObject(%array))
 		return;
 
+	%args = Tuple::fromArgs(
+		%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
+		%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17
+	);
+
 	%rebuilt = Array("", 1);
 
 	for (%i = 0; %i < %array.length; %i++)
 	{
 		%listener = %array.value[%i].value[0];
 
-		if (!Callable::isValid(%listener))
+		if (!isCallable(%listener))
 			continue;
 
-		Callable::call(%listener,
-			%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
-			%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17);
+		dynCallArgs(%listener, %args);
 
 		if (%array.value[%i].value[1])
 			continue;
@@ -52,7 +55,7 @@ function EventEmitter::sendEvent(%this, %event,
 
 function EventEmitter::addListener(%this, %event, %listener, %once)
 {
-	if (assert(Callable::isValid(%listener), "listener is not callable"))
+	if (assert(isCallable(%listener), "listener is not callable"))
 		return %this;
 
 	%array = %this.callbacks.get(%event);
@@ -72,10 +75,14 @@ function EventEmitter::removeListener(%this, %event, %listener)
 	{
 		for (%i = 0; %i < %array.length; %i++)
 		{
-			if (%array.value[%i].value[0] == %listener)
+			if (eq(%array.value[%i].value[0], %listener))
 			{
 				%array.pop(%i);
-				return %this;
+
+				if (%array.length < 1)
+					%this.callbacks.set(%event, "");
+
+				break;
 			}
 		}
 	}

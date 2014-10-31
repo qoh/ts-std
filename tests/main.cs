@@ -11,7 +11,7 @@ function ts_test::add(%this, %name, %callable)
 	if (assert(%name !$= "", "test name cannot be empty"))
 		return 1;
 
-	if (assert(Callable::isValid(%callable), "callable is not valid for test " @ %name))
+	if (assert(isCallable(%callable), "callable is not valid for test " @ %name))
 		return 1;
 
 	%this.tests.set(%name, %callable);
@@ -36,17 +36,17 @@ function ts_test::run_one(%this, %name)
 	$assert_debug++;
 	console.group("Running test: " @ %name);
 
-	%orig_true    = $assert_true;
-	%orig_false   = $assert_false;
-	$assert_true  = 0;
-	$assert_false = 0;
+	%orig_true  = $test_true;
+	%orig_false = $test_false;
+	$test_true  = 0;
+	$test_false = 0;
 
-	Callable::call(%callable);
+	dynCallArgs(%callable);
 
-	%test_true    = $assert_true;
-	%test_false   = $assert_false;
-	$assert_true  = %orig_true;
-	$assert_false = %orig_false;
+	%test_true  = $test_true;
+	%test_false = $test_false;
+	$test_true  = %orig_true;
+	$test_false = %orig_false;
 
 	%asserts = %test_true SPC "out of" SPC (%test_true + %test_false) SPC "assert(s)";
 
@@ -57,4 +57,20 @@ function ts_test::run_one(%this, %name)
 	$assert_debug--;
 
 	return %test_false == 0;
+}
+
+function test(%condition, %message, %expr)
+{
+	$test_true += !!%condition;
+	$test_false += !%condition;
+
+	if (%message !$= "")
+	{
+		if (%condition)
+			console.log("\c9v  Success: " SPC %message @ (%expr $= "" ? "" : "  [" @ %expr @ "]"));
+		else
+			console.log("\c2" @ chr(215) @ "  Failed: " SPC %message @ (%expr $= "" ? "" : "  [" @ %expr @ "]"));
+	}
+
+	return !%condition;
 }

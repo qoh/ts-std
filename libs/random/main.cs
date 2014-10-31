@@ -40,7 +40,7 @@ function RandomGenerator::getSeed(%this)
 
 function RandomGenerator::nextDist(%this, %dist)
 {
-	return Callable::call(%dist, %this._next());
+	return dynCall(%dist, %this._next());
 }
 
 function RandomGenerator::nextFloat(%this, %min, %max)
@@ -132,4 +132,7 @@ exec("./MersenneTwister.cs");
 exec("./diehard.cs");
 
 if (!isObject(Random))
-	ref(MersenneTwister()).setName("Random");
+{
+	MersenneTwister().setName("Random");
+	Random.___constant = 1;
+}

@@ -5,6 +5,7 @@ if (!isObject(stringlib))
 		class = "Module";
 		
 		bindigits = "01";
+		colors = "\c0\c1\c2\c3\c4\c5\c6\c7\c8\c9\cp\co\cr";
 		digits = "0123456789";
 		hexdigits = "0123456789abcdefABCDEF";
 		lowercase = "abcdefghijklmnopqrstuvwxyz";
@@ -18,86 +19,9 @@ if (!isObject(stringlib))
 	stringlib.printable = stringlib.letters @ stringlib.punctuation @ stringlib.whitespace;
 }
 
-function format(%format,
-	%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
-	%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18)
+function stripColorChars(%string)
 {
-	if (%a0.superClass $= "Iterator" && %a1 $= "")
-	{
-		%args = %a0;
-		%given = 1;
-	}
-	else
-	{
-		for (%count = 19; %count > 0; %count--)
-		{
-			if (%a[%count - 1] !$= "")
-				break;
-		}
-
-		%args = ArrayIterator(%count, 1);
-
-		for (%i = 0; %i < %count; %i++)
-			%args.value[%i] = %a[%i];
-	}
-
-	%len = strlen(%format);
-	%prev = getSubStr(%format, 0, 1);
-
-	if (%prev !$= "%")
-		%text = %prev;
-
-	for (%i = 1; %i < %len; %i++)
-	{
-		%curr = getSubStr(%format, %i, 1);
-
-		if (%prev $= "%")
-		{
-			if (%curr $= "%")
-			{
-				%text = %text @ "%";
-				%prev = %curr;
-				continue;
-			}
-
-			if (%args.hasNext())
-				%rep = %args.next();
-			else
-				%rep = "";
-
-			switch$ (%curr)
-			{
-				case "_": 
-				case "s": %text = %text @ %rep;
-				case "r": %text = %text @ repr(%rep);
-				case "x": %text = %text @ hex(%rep, strcmp(%curr, "X") == 0);
-				case "o": %text = %text @ oct(%rep);
-				case "b": %text = %text @ bin(%rep);
-				case "i" or "d": %text = %text @ (%rep | 0);
-				case "c":
-					if (%rep | 0 $= %rep)
-						%text = %text @ ord(%rep);
-					else
-						%text = %text @ getSubStr(%rep, 0, 1);
-				case "f":
-					%rep += 0;
-					if (strpos(%rep, ".") == -1)
-						%rep = %rep @ ".0";
-					%text = %text @ %rep;
-				default:
-					%text = %text @ "%" @ %curr;
-			}
-		}
-		else if (%curr !$= "%" || %i == %len - 1)
-			%text = %text @ %curr;
-		
-		%prev = %curr;
-	}
-
-	if (!%given)
-		%args.delete();
-
-	return %text;
+	return stripChars(%string, stringlib.colors);
 }
 
 function _iterformat_num(%format, %i, %len)
@@ -106,7 +30,7 @@ function _iterformat_num(%format, %i, %len)
 	{
 		%chr = getSubStr(%format, %i, 1);
 
-		if (strpos(strlib.digits, %chr) == -1)
+		if (strpos("0123456789", %chr) == -1)
 			break;
 
 		%out = %out @ %chr;
@@ -116,8 +40,14 @@ function _iterformat_num(%format, %i, %len)
 	return %i SPC %out;
 }
 
+function loc(%str, %i, %desc)
+{
+	echo(%str, "\n", repeat(" ", %i), "^ ", %desc);
+}
+
 function iterformat(%format, %iter)
 {
+	%i = 0;
 	%len = strlen(%format);
 
 	while (%i < %len)
@@ -131,21 +61,28 @@ function iterformat(%format, %iter)
 			break;
 		}
 
-		// trailing % produces %
-		if (%j + 1 > %len)
+		if (%i != %j)
+			%out = %out @ getSubStr(%format, %i, %j - %i);
+
+		%j++; // go past the actual % sign
+
+		if (%j >= %len) // trailing % produces raw %
 		{
 			%out = %out @ "%";
 			break;
 		}
 
-		%chr = getSubStr(%format, %j + 1, 1);
-		%i = %j + 2;
-
-		// don't allow prefixes on %% escape
-		if (%chr $= "%")
+		if ((%chr = getSubStr(%format, %j, 1)) $= "%")
 		{
 			%out = %out @ "%";
+			%i = %j++;
 			continue;
+		}
+
+		if (!%iter.hasNext())
+		{
+			%out = %out @ getSubStr(%format, %j - 1, %len);
+			break;
 		}
 
 		// read flags
@@ -160,7 +97,7 @@ function iterformat(%format, %iter)
 		%padside = 1;
 		%padchar = " ";
 
-		while (%i < %len)
+		while (%j < %len)
 		{
 			switch$ (%chr)
 			{
@@ -172,28 +109,41 @@ function iterformat(%format, %iter)
 				default: break; // break; in switch in TS breaks outer loop
 			}
 
-			%chr = getSubStr(%format, %i++, 1);
+			%chr = getSubStr(%format, %j++, 1);
 		}
 
 		// read width
-		%scan = _iterformat_num(%format, %i, %len);
+		%scan = _iterformat_num(%format, %j, %len);
 
-		%i = getWord(%scan, 0);
+		%j = getWord(%scan, 0);
 		%padsize = getWord(%scan, 1);
 
 		if (%padsize !$= "")
-			%chr = getSubStr(%format, %i, 1);
+		{
+			%chr = getSubStr(%format, %j, 1);
+			%j++;
+		}
 
 		// read precision
 		if (%chr $= ".")
 		{
-			%scan = _iterformat_num(%format, %i + 1, %len);
+			%scan = _iterformat_num(%format, %j, %len);
 
-			%i = getWord(%scan, 0);
+			%j = getWord(%scan, 0);
 			%precision = getWord(%scan, 1);
 
+			if (%precision $= "") // invalid format, add and move along
+			{
+				%out = %out @ getSubStr(%format, %i, %j - %i);
+				%i = %j;
+				continue;
+			}
+
 			if (%precision !$= "")
-				%chr = getSubStr(%format, %i, 1);
+			{
+				%chr = getSubStr(%format, %j, 1);
+				%j++;
+			}
 
 			if (%precision == 0)
 				%precision = "";
@@ -201,11 +151,7 @@ function iterformat(%format, %iter)
 		else
 			%precision = "";
 
-		if (%iter.hasNext())
-			%value = %iter.next();
-		else
-			%value = "";
-
+		%value = %iter.next();
 		%text = "";
 
 		switch$ (%chr)
@@ -213,17 +159,15 @@ function iterformat(%format, %iter)
 			case "d" or "i":
 				%value |= 0;
 
-				if (%flag_always_sign)
+				if (%flag_always_sign && %value >= 0)
 				{
-					if (%value < 0)
-						%text = "+" @ %value;
+					echo(%value @ " is >= 0");
+					%text = "+" @ %value;
 				}
 				else if (%flag_space_sign && %value >= 0)
 					%text = " " @ %value;
 				else
 					%text = %value;
-
-				%text = %value;
 
 			case "u":
 				%value |= 0;
@@ -231,7 +175,10 @@ function iterformat(%format, %iter)
 				if (%value < 0)
 					%text = -%value;
 				else
+				{
+					echo(%value SPC "is not < 0");
 					%text = %value;
+				}
 
 			case "f":
 				%value = mFloatLength(%value, %precision $= "" ? 6 : %precision);
@@ -263,15 +210,37 @@ function iterformat(%format, %iter)
 		if (%padsize !$= "")
 		{
 			if (%padside)
-				%text = %text @ repeat(%padchar, %padsize - strlen(%text));
+				%text = %text @ repeat(%padchar, %padsize - strlen(stripColorChars(%text)));
 			else
-				%text = repeat(%padchar, %padsize - strlen(%text)) @ %text;
+				%text = repeat(%padchar, %padsize - strlen(stripColorChars(%text))) @ %text;
 		}
 
 		%out = %out @ %text;
+		%i = %j + 1;
 	}
 
 	return %out;
+}
+
+function format(%format,
+	%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
+	%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18)
+{
+	if (%a0.superClass $= "Iterator" && %a1 $= "")
+		return iterformat(%format, %a0);
+
+	for (%count = 19; %count > 0; %count--)
+	{
+		if (%a[%count - 1] !$= "")
+			break;
+	}
+
+	%args = ArrayIterator(%count, 1);
+
+	for (%i = 0; %i < %count; %i++)
+		%args.value[%i] = %a[%i];
+	
+	return iterformat(%format, %args);
 }
 
 function formatn(
@@ -298,7 +267,7 @@ function formatn(
 	}
 
 	while (%args.hasNext())
-		%text = %text @ format(%args.next(), %args);
+		%text = %text @ iterformat(%args.next(), %args);
 	
 	if (!%given)
 		%args.delete();

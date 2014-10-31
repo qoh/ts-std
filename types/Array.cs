@@ -102,7 +102,7 @@ function ArrayInstance::__len__(%this)
 
 function ArrayInstance::__repr__(%this)
 {
-	return "[" @ join(imap(%this, repr), ", ") @ "]";
+	return "[" @ join(imap(repr, %this), ", ") @ "]";
 }
 
 function ArrayInstance::__add__(%this, %other)
@@ -291,7 +291,7 @@ function ArrayInstance::map(%this, %target)
 		if (%this._refer)
 			unref(%this.value[%i]);
 
-		%this.value[%i] = Callable::call(%target, %this.value[%i]);
+		%this.value[%i] = dynCall(%target, %this.value[%i]);
 
 		if (%this._refer)
 			ref(%this.value[%i]);
@@ -306,7 +306,7 @@ function ArrayInstance::filter(%this, %target)
 
 	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
 	{
-		if (Callable::call(%target, %this.value[%i]))
+		if (dynCall(%target, %this.value[%i]))
 			%result.append(%this.value[%i]);
 	}
 

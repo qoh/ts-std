@@ -1,6 +1,6 @@
 function iter(%value, %sentinel, %forceCopy)
 {
-	if (%sentinel !$= "" && Callable::isValid(%value))
+	if (%sentinel !$= "" && isCallable(%value))
 	{
 		return FunctionIterator(_isentinel_hasNext, _isentinel_next,
 			new ScriptObject()
@@ -90,7 +90,7 @@ function Iterator::next(%this)
 // Proxies hasNext and next into the given callables, passing *context* if specified.
 function FunctionIterator(%hasNext, %next, %context)
 {
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "FunctionIterator";
 		superClass = "Iterator";
@@ -98,7 +98,7 @@ function FunctionIterator(%hasNext, %next, %context)
 		hasNext = %hasNext;
 		next = %next;
 		context = ref(%context);
-	};
+	});
 }
 
 function FunctionIterator::onRemove(%this)
@@ -115,14 +115,14 @@ function FunctionIterator::copy(%this)
 		___ref = "";
 		___ref_sched = "";
 	};
-	%this.context.setName("");
 
+	%this.context.setName("");
 	return FunctionIterator(%this.hasNext, %this.next, %copy);
 }
 
 function FunctionIterator::hasNext(%this)
 {
-	return %this.hasNext $= "" || call(%this.hasNext, %this.context);
+	return %this.hasNext $= "" || dynCall(%this.hasNext, %this.context);
 }
 
 function FunctionIterator::next(%this)
@@ -130,46 +130,68 @@ function FunctionIterator::next(%this)
 	if (!%this.hasNext())
 		return "";
 
-	return call(%this.next, %this.context);
+	return dynCall(%this.next, %this.context);
 }
 
 // ====================================
-// ArrayIterator(int length = 0, bool refer = false)
+// ArrayIterator(int length = 0)
 // Yields values from a predefined sequence
-function ArrayIterator(%length, %refer)
+function ArrayIterator(%length)
 {
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "ArrayIterator";
 		superClass = "Iterator";
 
 		length = %length | 0;
 		index = 0;
-		refer = %refer;
-	};
+	});
+}
+
+function ArrayIterator::fromArgs(%this,
+	%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
+	%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18)
+{
+	for (%count = 19; %count > 0; %count--)
+	{
+		if (%a[%count - 1] !$= "")
+			break;
+	}
+
+	%iter = tempref(new ScriptObject()
+	{
+		class = "ArrayIterator";
+		superClass = "Iterator";
+
+		length = %count;
+		index = 0;
+	});
+
+	for (%i = 0; %i < %count; %i++)
+		%iter.value[%i] = ref(%a[%i]);
+
+	return %iter;
 }
 
 function ArrayIterator::onRemove(%this)
 {
-	if (%this.refer)
-	{
-		for (%i = 0; %i < %this.length; %i++)
-			unref(%this.value[%i]);
-	}
+	for (%i = 0; %i < %this.length; %i++)
+		unref(%this.value[%i]);
 }
 
 function ArrayIterator::copy(%this)
 {
-	%iter = ArrayIterator(%this.length, %this.refer);
-	%iter.index = %this.index;
+	%iter = tempref(new ScriptObject()
+	{
+		class = "ArrayIterator";
+		superClass = "Iterator";
+
+		length = %this.length;
+		index = %this.index;
+	});
 
 	for (%i = 0; %i < %this.length; %i++)
-	{
-		if (%this.refer)
-			ref(%this.value[%i]);
-
-		%iter.value[%i] = %this.value[%i];
-	}
+		%iter.value[%i] = ref(%this.value[%i]);
 
 	return %iter;
 }
@@ -182,7 +204,7 @@ function ArrayIterator::hasNext(%this)
 function ArrayIterator::next(%this)
 {
 	%value = %this.value[%this.index];
-	%this.index++;
+	%this.index = (%this.index + 1) | 0;
 	return %value;
 }
 
@@ -191,7 +213,7 @@ function _isentinel_hasNext(%ctx)
 {
 	if (!%ctx.cached && !%ctx.halt)
 	{
-		%next = tempref(Callable::call(%ctx.func));
+		%next = tempref(dynCallArgs(%ctx.func));
 
 		if (!eq(%next, %ctx.sentinel))
 		{
@@ -259,11 +281,11 @@ function any(%seq)
 // Call *func* for each value from *seq*.
 function apply(%func, %seq)
 {
-	if (assert(Callable::isValid(%func), "func is not callable")) return;
+	if (assert(isCallable(%func), "func is not callable")) return;
 	if (assert(%iter = iter(%seq), "seq is not iterable")) return;
 
 	while (%iter.hasNext())
-		Callable::call(%func, %iter.next());
+		dynCall(%func, %iter.next());
 
 	%iter.delete();
 }
@@ -305,7 +327,7 @@ function _enumerate_next(%ctx)    { return Tuple::fromArgs(%ctx.i++, %ctx.iter.n
 //     filter("", %array)
 function filter(%func, %seq)
 {
-	if (assert(%func $= "" || Callable::isValid(%func), "func is not callable")) return "";
+	if (assert(%func $= "" || isCallable(%func), "func is not callable")) return "";
 	if (assert(%iter = iter(%seq), "seq is not iterable")) return "";
 
 	return FunctionIterator(_filter_hasNext, _filter_next,
@@ -326,7 +348,7 @@ function _filter_hasNext(%ctx)
 	{
 		%next = %ctx.iter.next();
 
-		if (bool(%ctx.func $= "" ? %next : Callable::call(%ctx.func, %next)))
+		if (bool(%ctx.func $= "" ? %next : dynCall(%ctx.func, %next)))
 		{
 			%ctx.cached = 1;
 			%ctx.next = ref(%next);
@@ -351,7 +373,7 @@ function _filter_next(%ctx)
 // Create an iterator that computes *func* for each value yielded by iterating over *seq*.
 function imap(%func, %seq)
 {
-	if (assert(Callable::isValid(%func), "func is not callable")) return 0;
+	if (assert(isCallable(%func), "func is not callable")) return 0;
 	if (assert(%iter = iter(%seq), "seq is not iterable")) return 0;
 
 	return FunctionIterator(_imap_hasNext, _imap_next,
@@ -364,7 +386,7 @@ function imap(%func, %seq)
 }
 
 function _imap_hasNext(%ctx) { %ctx.iter.hasNext(); }
-function _imap_next(%ctx) { return Callable::call(%ctx.func, %ctx.iter.next()); }
+function _imap_next(%ctx) { return dynCall(%ctx.func, %ctx.iter.next()); }
 
 // range(start = 0, end, step = 1)
 // Make an iterator that yields values from *start* to *end*,
@@ -413,7 +435,7 @@ function reversed(%seq)
 // reduce(Callable func, Iterable seq, [start])
 function reduce(%func, %seq, %start)
 {
-	if (assert(Callable::isValid(%func), "func is not callable")) return "";
+	if (assert(isCallable(%func), "func is not callable")) return "";
 	if (assert(%iter = iter(%seq), "seq is not iterable")) return "";
 
 	if (%start $= "")
@@ -425,7 +447,7 @@ function reduce(%func, %seq, %start)
 	}
 
 	while (%iter.hasNext())
-		%start = Callable::call(%func, %start, %iter.next());
+		%start = dynCall(%func, %start, %iter.next());
 
 	%iter.delete();
 	return %start;
@@ -625,10 +647,10 @@ function _iter_chain_next(%ctx)
 // iter::compress(Iterable seq, Iterable which)
 function iter::compress(%seq, %which)
 {
-	if (assert(%seq = iter(%seq)), "seq is not iterable")
+	if (assert(%seq = iter(%seq), "seq is not iterable"))
 		return 0;
 
-	if (assert(%which = iter(%which)), "which is not iterable")
+	if (assert(%which = iter(%which), "which is not iterable"))
 	{
 		%seq.delete();
 		return 0;
@@ -700,7 +722,7 @@ function _repeat_next(%ctx)
 // *func* is true for each value.
 function iter::takeWhile(%func, %seq)
 {
-	if (assert(Callable::isValid(%func), "func is not callable")) return 0;
+	if (assert(isCallable(%func), "func is not callable")) return 0;
 	if (assert(%iter = iter(%seq), "seq is not iterable")) return 0;
 
 	return FunctionIterator(_takeWhile_hasNext, _takeWhile_next,
@@ -721,7 +743,7 @@ function _takeWhile_next(%ctx)
 {
 	%next = %ctx.iter.next();
 
-	if (!bool(Callable::call(%ctx.func, %next)))
+	if (!bool(dynCall(%ctx.func, %next)))
 		%ctx.ended = 1;
 
 	return %next;

@@ -82,7 +82,7 @@ function TupleInstance::__len__(%this)
 
 function TupleInstance::__repr__(%this)
 {
-	return "(" @ join(imap(%this, repr), ", ") @ ")";
+	return "(" @ join(imap(repr, %this), ", ") @ ")";
 }
 
 function TupleInstance::__add__(%this, %other)
