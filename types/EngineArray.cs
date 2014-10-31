@@ -1,9 +1,9 @@
 function EngineSet(%seq)
 {
-	%set = new ScriptObject()
+	%set = tempref(new ScriptObject()
 	{
 		class = "EngineSet";
-	};
+	} @ "\x08");
 
 	if (%seq !$= "")
 		%set.addAll(%seq);

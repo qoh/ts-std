@@ -14,7 +14,7 @@ function String(%text)
 		{
 			class = "String";
 			text = %text.text;
-		});
+		} @ "\x08");
 	}
 
 	// %text = str(%text);
@@ -23,7 +23,7 @@ function String(%text)
 	{
 		class = "String";
 		text = %text;
-	});
+	} @ "\x08");
 }
 
 function String::__cmp__(%this, %other)
@@ -221,7 +221,7 @@ function String::lower(%this)
 	return String(strlwr(%this.text));
 }
 
-function String::repeat(%this, %search, %replace)
+function String::replace(%this, %search, %replace)
 {
 	if (%search.class $= "String")
 		%search = %search.text;

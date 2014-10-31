@@ -8,7 +8,7 @@ function iter(%value, %sentinel, %forceCopy)
 				class = Struct;
 				func = %value;
 				sentinel = %sentinel;
-			});
+			} @ "\x08");
 	}
 
 	if (%value.superClass $= "Iterator")
@@ -62,7 +62,7 @@ function Iterator()
 	return new ScriptObject()
 	{
 		class = "Iterator";
-	};
+	} @ "\x08";
 }
 
 function Iterator::onAdd(%this)
@@ -98,7 +98,7 @@ function FunctionIterator(%hasNext, %next, %context)
 		hasNext = %hasNext;
 		next = %next;
 		context = ref(%context);
-	});
+	} @ "\x08");
 }
 
 function FunctionIterator::onRemove(%this)
@@ -114,7 +114,7 @@ function FunctionIterator::copy(%this)
 	{
 		___ref = "";
 		___ref_sched = "";
-	};
+	} @ "\x08";
 
 	%this.context.setName("");
 	return FunctionIterator(%this.hasNext, %this.next, %copy);
@@ -145,7 +145,7 @@ function ArrayIterator(%length)
 
 		length = %length | 0;
 		index = 0;
-	});
+	} @ "\x08");
 }
 
 function ArrayIterator::fromArgs(%this,
@@ -165,7 +165,7 @@ function ArrayIterator::fromArgs(%this,
 
 		length = %count;
 		index = 0;
-	});
+	} @ "\x08");
 
 	for (%i = 0; %i < %count; %i++)
 		%iter.value[%i] = ref(%a[%i]);
@@ -188,7 +188,7 @@ function ArrayIterator::copy(%this)
 
 		length = %this.length;
 		index = %this.index;
-	});
+	} @ "\x08");
 
 	for (%i = 0; %i < %this.length; %i++)
 		%iter.value[%i] = ref(%this.value[%i]);
@@ -309,7 +309,7 @@ function enumerate(%seq, %start)
 			class = Struct;
 			iter = %iter;
 			i = %start - 1;
-		});
+		} @ "\x08");
 }
 
 function _enumerate_hasNext(%ctx) { return %ctx.iter.hasNext(); }
@@ -336,7 +336,7 @@ function filter(%func, %seq)
 			class = Struct;
 			iter = %iter;
 			func = %func;
-		});
+		} @ "\x08");
 }
 
 function _filter_hasNext(%ctx)
@@ -382,7 +382,7 @@ function imap(%func, %seq)
 			class = Struct;
 			iter = %iter;
 			func = %func;
-		});
+		} @ "\x08");
 }
 
 function _imap_hasNext(%ctx) { %ctx.iter.hasNext(); }
@@ -408,7 +408,7 @@ function range(%start, %end, %step)
 			value = %start;
 			end = %end;
 			step = %step;
-		});
+		} @ "\x08");
 }
 
 function _range_hasNext(%ctx)
@@ -497,7 +497,7 @@ function permutations(%seq, %r)
 		class = Struct;
 		n = 0;
 		r = %r;
-	};
+	} @ "\x08";
 
 	while (%iter.hasNext())
 	{
@@ -531,9 +531,9 @@ function _permutations_next(%ctx)
 {
 	%result = tempref(new ScriptObject()
 	{
-		class = Tuple;
+		class = TupleInstance;
 		length = %ctx.r;
-	});
+	} @ "\x08");
 
 	if (!%ctx.first)
 	{
@@ -563,7 +563,7 @@ function zip(
 	{
 		class = Struct;
 		count = %count;
-	};
+	} @ "\x08";
 
 	for (%i = 0; %i < %count; %i++)
 	{
@@ -597,9 +597,9 @@ function _zip_next(%ctx)
 {
 	%tuple = new ScriptObject()
 	{
-		class = Tuple;
+		class = TupleInstance;
 		length = %ctx.count;
-	};
+	} @ "\x08";
 
 	for (%i = 0; %i < %ctx.count; %i++)
 		%tuple.value[%i] = ref(%ctx.iter[%i].next());
@@ -622,7 +622,7 @@ function iter::chain(%seqs)
 			class = Struct;
 			iter = %iter;
 			skip = 0;
-		});
+		} @ "\x08");
 }
 
 function _iter_chain_hasNext(%ctx)
@@ -656,13 +656,13 @@ function iter::compress(%seq, %which)
 		return 0;
 	}
 
-	return new ScriptObject(_iter_compress_hasNext, _iter_compress_next,
+	return FunctionIterator(_iter_compress_hasNext, _iter_compress_next,
 		new ScriptObject()
 		{
 			class = Struct;
 			seq = %seq;
 			which = %which;
-		});
+		} @ "\x08");
 }
 
 function _iter_compress_hasNext(%ctx)
@@ -684,7 +684,7 @@ function iter::count(%start, %step)
 			class = Struct;
 			next = %start - %step;
 			step = %step $= "" ? 1 : %step;
-		});
+		} @ "\x08");
 }
 
 function _iter_count_next(%ctx)
@@ -701,7 +701,7 @@ function iter::repeat(%value, %times)
 			class = Struct;
 			value = %value;
 			times = %times;
-		});
+		} @ "\x08");
 }
 
 function _repeat_hasNext(%ctx)
@@ -731,7 +731,7 @@ function iter::takeWhile(%func, %seq)
 			class = Struct;
 			func = %func;
 			iter = %iter;
-		});
+		} @ "\x08");
 }
 
 function _takeWhile_hasNext(%ctx)

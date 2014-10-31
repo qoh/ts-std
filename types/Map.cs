@@ -1,10 +1,9 @@
-function Map(%refer)
+function Map()
 {
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "MapInstance";
-		__refer = %refer;
-	};
+	} @ "\x08");
 }
 
 function Map::fromPairs(%iterable)
@@ -14,12 +13,12 @@ function Map::fromPairs(%iterable)
 	if (assert(%iter, "input not iterable"))
 		return 0;
 
-	%map = Map(%refer);
+	%map = Map();
 
 	while (%iter.hasNext())
 	{
 		%next = %iter.next();
-		%map.set(%next.value[0], %next.value[1]);
+		%map.set(%next.value0, %next.value1);
 	}
 
 	%iter.delete();
@@ -56,18 +55,15 @@ function Map::__isSafe(%key)
 
 function MapInstance::onAdd(%this)
 {
-	%this.__keys = Array();
+	%this.__keys = ref(Array());
 }
 
 function MapInstance::onRemove(%this)
 {
-	if (%this.__refer)
-	{
-		for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
-			unref(%this.__value[%this.__keys.value[%i]]);
-	}
+	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
+		unref(%this.__value[%this.__keys.value[%i]]);
 
-	%this.__keys.delete();
+	unref(%this.__keys);
 }
 
 function MapInstance::__repr__(%this)
@@ -117,7 +113,7 @@ function MapInstance::__iter__(%this)
 
 function MapInstance::copy(%this)
 {
-	%map = Map(%this.__refer);
+	%map = Map();
 
 	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
 		%map.set(%this.__keys.value[%i], %this.__value[%this.__keys.value[%i]], %this.__type[%this.__keys.value[%i]]);
@@ -131,13 +127,10 @@ function MapInstance::clear(%this)
 	{
 		%key = %this.__keys.value[%i];
 		
-		if (%this.__refer)
-			unref(%this.__value[%key]);
-		
 		if (Map::__isSafe(%key))
 			%this.setAttribute(%key, "");
 
-		%this.__value[%key] = "";
+		%this.__value[%key] = unref(%this.__value[%key]);
 		%this.__type[%key] = "";
 	}
 
@@ -161,13 +154,10 @@ function MapInstance::set(%this, %key, %value, %type)
 {
 	if (!%this.__keys.contains(%key))
 		%this.__keys.append(%key);
-	else if (%this.__refer)
+	else
 		unref(%this.__value[%key]);
 
-	if (%this.__refer)
-		ref(%value);
-
-	%this.__value[%key] = %value;
+	%this.__value[%key] = ref(%value);
 	%this.__type[%key] = %value;
 
 	if (Map::__isSafe(%key))
@@ -191,7 +181,7 @@ function MapInstance::pop(%this, %key, %default)
 	if (%index != -1)
 	{
 		%value = %this.__value[%key];
-		%this.__value[%key] = "";
+		%this.__value[%key] = unref(%this.__value[%key]);
 		%this.__type[%key] = "";
 
 		if (Map::__isSafe(%key))

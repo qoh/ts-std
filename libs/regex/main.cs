@@ -171,7 +171,7 @@ function RegexState(%match, %out0, %out1)
 		match = %match;
 		out0 = ref(%out0);
 		out1 = ref(%out1);
-	};
+	} @ "\x08";
 }
 
 function RegexState::onRemove(%this)
@@ -188,7 +188,7 @@ function RegexFrag(%start, %out)
 		class = "RegexFrag";
 		start = ref(%start);
 		out = ref(%out);
-	};
+	} @ "\x08";
 }
 
 function RegexFrag::onRemove(%this)
@@ -207,7 +207,7 @@ function RegexOuts(%state, %index)
 
 		state0 = ref(%state);
 		index0 = %index;
-	};
+	} @ "\x08";
 }
 
 function RegexOuts::onRemove(%this)
@@ -222,7 +222,7 @@ function RegexOuts::append(%this, %outs)
 	{
 		class = "RegexOuts";
 		length = 0;
-	};
+	} @ "\x08";
 
 	for (%i = 0; %i < %this.length; %i++)
 	{
@@ -254,7 +254,7 @@ function RegexStates(%start)
 	{
 		class = "RegexStates";
 		length = 0;
-	};
+	} @ "\x08";
 
 	if (isObject(%start))
 		%states.add(%start);
@@ -332,7 +332,7 @@ function RegexProgram(%state)
 	{
 		class = "RegexProgram";
 		state = ref(%state);
-	};
+	} @ "\x08";
 }
 
 function RegexProgram::onRemove(%this)
@@ -383,6 +383,8 @@ function RegexProgram::inspect(%this)
 		else
 			echo(%head @ (%state.match == 0 ? "*" : chr(%state.match)) @ " => " @ %out0);
 	}
+
+	%context.delete();
 }
 
 function RegexProgram::inspectInner(%this, %state, %context)

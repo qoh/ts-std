@@ -1,9 +1,9 @@
 function ByteArray()
 {
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "ByteArrayInstance";
-	};
+	} @ "\x08");
 }
 
 // get:
@@ -36,13 +36,13 @@ function SizedByteArray(%size)
 	if (assert(%size >= 0, "size must not be be negative"))
 		return 0;
 
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "SizedByteArrayInstance";
 		superClass = "ByteArrayInstance";
 
 		size = %size | 0;
-	};
+	} @ "\x08");
 }
 
 function SizedByteArrayInstance::get(%this, %i)

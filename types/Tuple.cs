@@ -4,11 +4,11 @@ function Tuple(%seq)
 	if (%seq !$= "" && assert(%iter = iter(%seq), "seq is not iterable"))
 		return 0;
 
-	%tuple = new ScriptObject()
+	%tuple = tempref(new ScriptObject()
 	{
 		class = "TupleInstance";
 		length = 0;
-	};
+	} @ "\x08");
 
 	if (%seq !$= "")
 	{
@@ -20,7 +20,7 @@ function Tuple(%seq)
 	}
 
 	%iter.delete();
-	return tempref(%tuple);
+	return %tuple;
 }
 
 function Tuple::fromArgs(
@@ -33,16 +33,16 @@ function Tuple::fromArgs(
 			break;
 	}
 
-	%tuple = new ScriptObject()
+	%tuple = tempref(new ScriptObject()
 	{
 		class = "TupleInstance";
 		length = %length;
-	};
+	} @ "\x08");
 
 	for (%i = 0; %i < %length; %i++)
 		%tuple.value[%i] = ref(%a[%i]);
 
-	return tempref(%tuple);
+	return %tuple;
 }
 
 function TupleInstance::onRemove(%this)
@@ -109,11 +109,11 @@ function TupleInstance::__mul__(%this, %n)
 	if (assert(%n >= 0, "other cannot be negative for Tuple mul"))
 		return 0;
 
-	%tuple = new ScriptObject()
+	%tuple = tempref(new ScriptObject()
 	{
 		class = "Tuple";
 		length = %this.length * %n;
-	};
+	} @ "\x08");
 
 	for (%i = 0; %i < %n; %i = (%i + 1) | 0)
 	{

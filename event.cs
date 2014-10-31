@@ -1,9 +1,9 @@
 function EventEmitter()
 {
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "EventEmitter";
-	};
+	} @ "\x08");
 }
 
 function EventEmitter::onAdd(%this)

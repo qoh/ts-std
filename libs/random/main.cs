@@ -4,11 +4,11 @@ function RandomGenerator(%seed, %class)
 	if (assert(%class !$= "", "class must be given"))
 		return 0;
 
-	%gen = new ScriptObject()
+	%gen = tempref(new ScriptObject()
 	{
 		class = %class;
 		superClass = "RandomGenerator";
-	};
+	} @ "\x08");
 
 	if (%seed $= "")
 		%seed = getRealTime();

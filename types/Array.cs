@@ -1,11 +1,11 @@
 function Array(%iterable, %refer)
 {
-	%array = new ScriptObject()
+	%array = tempref(new ScriptObject()
 	{
 		class = "ArrayInstance";
 		length = 0;
 		_refer = %refer;
-	};
+	} @ "\x08");
 
 	if (%iterable !$= "")
 		%array.concat(%iterable);
@@ -23,12 +23,12 @@ function Array::fromArgs(
 			break;
 	}
 
-	%array = new ScriptObject()
+	%array = tempref(new ScriptObject()
 	{
 		class = "ArrayInstance";
 		length = %length;
 		_refer = 1;
-	};
+	} @ "\x08");
 
 	for (%i = 0; %i < %length; %i++)
 		%array.value[%i] = ref(%a[%i]);
@@ -41,12 +41,12 @@ function Array::split(%text, %separator, %refer)
 	if (%separator $= "")
 		%separator = " ";
 
-	%array = new ScriptObject()
+	%array = tempref(new ScriptObject()
 	{
 		class = "ArrayInstance";
 		length = 0;
 		_refer = %refer;
-	};
+	} @ "\x08");
 
 	while (%text !$= "")
 	{

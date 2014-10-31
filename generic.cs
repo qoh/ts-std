@@ -159,12 +159,39 @@ function eq(%a, %b)
 	return %a $= %b;
 }
 
-function repr(%value)
+function str(%value)
 {
 	if (isObject(%value))
 	{
+		if (%value.hasMethod("__str__"))
+			return SimObject::callArgs(%value, "__str__");
+
+		return repr(%value);
+	}
+
+	if (strcmp(%value, "-1.#IND") == 0)
+		return "NaN";
+
+	if (strcmp(%value, "1.#INF") == 0)
+		return "Infinity";
+
+	if (strcmp(%value, "-1.#INF") == 0)
+		return "-Infinity";
+
+	return %value;
+}
+
+function repr(%value)
+{
+	//echo(%value SPC %value.class SPC %value.__class.getName() SPC isObject(%value) SPC isRealObject(%value));
+
+	if (isObject(%value))
+	{
 		if (%value.hasMethod("__repr__"))
-			return SimObject::callArgs(%value, "__repr__");
+			return %value.callArgs("__repr__");
+
+		if (%value.hasMethod("__str__")) // need to fix this
+			return %value.callArgs("__str__");
 
 		return getType(%value, 1) SPC %value.getName() @ "(" @ %value.getID() @ ")";
 	}
@@ -358,7 +385,7 @@ function bin(%value)
 
 function ref(%obj)
 {
-	if (isObject(%obj) && !%obj.___constant)
+	if (isRealObject(%obj) && !%obj.___constant)
 	{
 		if (%obj.___ref++ == 1)
 			cancel(%obj.___ref_sched);
@@ -369,7 +396,7 @@ function ref(%obj)
 
 function unref(%obj)
 {
-	if (isObject(%obj) && !%obj.___constant && %obj.___ref-- == 0)
+	if (isRealObject(%obj) && !%obj.___constant && %obj.___ref-- == 0)
 		%obj.___ref_sched = %obj.schedule(0, delete);
 
 	return "";
@@ -377,7 +404,7 @@ function unref(%obj)
 
 function tempref(%obj)
 {
-	if (isObject(%obj) && !%obj.___constant && %obj.___ref $= "")
+	if (isRealObject(%obj) && !%obj.___constant && %obj.___ref $= "")
 	{
 		%obj.___ref = 0;
 		%obj.___ref_sched = %obj.schedule(0, delete);

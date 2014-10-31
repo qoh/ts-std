@@ -110,13 +110,13 @@ function INI::export(%data, %fileName, %silent)
 
 function INIData()
 {
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "INIData";
 
-		items = Map("", 1);
-		sections = Map("", 1);
-	};
+		items = ref(Map());
+		sections = ref(Map());
+	} @ "\x08");
 }
 
 function INIData::fromFile(%fileName)
@@ -128,20 +128,20 @@ function INIData::fromFile(%fileName)
 
 function INIData::onRemove(%this)
 {
-	%this.items.delete();
-	%this.sections.delete();
+	unref(%this.items);
+	unref(%this.sections);
 }
 
 function INIData::copy(%this)
 {
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "INIData";
 
 		// Map::copy needs deepcopy
-		items = %this.items.copy();
-		sections = %this.sections.copy();
-	};
+		items = ref(%this.items.copy());
+		sections = ref(%this.sections.copy());
+	} @ "\x08");
 }
 
 function INIData::root(%this)
@@ -156,7 +156,7 @@ function INIData::section(%this, %name)
 		class = "INISectionProxy";
 		data = %this;
 		name = %name;
-	});
+	} @ "\x08");
 }
 
 function INIData::get(%this, %key, %default)

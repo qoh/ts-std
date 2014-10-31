@@ -182,7 +182,7 @@ function callable(%name)
 			args = ref(Array("", 1));
 			args_after = ref(Array("", 1));
 			name = %name;
-		});
+		} @ "\x08");
 	}
 	
 	return tempref(new ScriptObject()
@@ -193,7 +193,7 @@ function callable(%name)
 		args_after = ref(Array("", 1));
 		scope = getSubStr(%name, 0, %pos);
 		name = getSubStr(%name, %pos + 2, strlen(%name));
-	});
+	} @ "\x08");
 }
 
 function callableObj(%name)
@@ -205,7 +205,7 @@ function callableObj(%name)
 		args = ref(Array("", 1));
 		args_after = ref(Array("", 1));
 		name = %name;
-	});
+	} @ "\x08");
 }
 
 function lambda(%code)
@@ -217,7 +217,7 @@ function lambda(%code)
 		args = ref(Array("", 1));
 		args_after = ref(Array("", 1));
 		code = %code;
-	});
+	} @ "\x08");
 }
 
 
@@ -353,7 +353,7 @@ function PlainCallable::copy(%this)
 		args = ref(%this.args.copy());
 		args_after = ref(%this.args_after.copy());
 		name = %this.name;
-	});
+	} @ "\x08");
 }
 
 function PlainCallable::isValid(%this)
@@ -390,7 +390,7 @@ function ScopeCallable::copy(%this)
 		args_after = ref(%this.args_after.copy());
 		scope = %this.scope;
 		name = %this.name;
-	});
+	} @ "\x08");
 }
 
 function ScopeCallable::isValid(%this)
@@ -439,7 +439,7 @@ function ObjectCallable::copy(%this)
 		args = ref(%this.args.copy());
 		args_after = ref(%this.args_after.copy());
 		name = %this.name;
-	});
+	} @ "\x08");
 }
 
 function ObjectCallable::isValid(%this)
@@ -511,7 +511,7 @@ function CodeCallable::copy(%this)
 		args = ref(%this.args.copy());
 		args_after = ref(%this.args_after.copy());
 		code = %this.code;
-	});
+	} @ "\x08");
 }
 
 function CodeCallable::isValid(%this)

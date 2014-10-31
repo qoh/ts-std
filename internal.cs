@@ -40,3 +40,31 @@ function _safeid(%attr)
 
 	return 1;
 }
+
+package ConsoleEntryExprPackage
+{
+	function ConsoleEntry::eval()
+	{
+		%value = ConsoleEntry.getValue();
+
+		if (%value !$= "")
+		{
+			%trimmed = rtrim(%value);
+			%last = getSubStr(%trimmed, strlen(%trimmed) - 1, 1);
+
+			if (%last !$= ";" && %last !$= "}")
+			{
+				ConsoleEntry.setValue("");
+
+				echo("==>" @ %value);
+				eval("console.log(repr(" @ %value @ "));");
+
+				return;
+			}
+		}
+
+		Parent::eval();
+	}
+};
+
+activatePackage("ConsoleEntryExprPackage");

@@ -31,7 +31,7 @@ function open(%file, %mode, %endline, %silent)
 
 	%fp.open = 1;
 
-	%stream = new ScriptObject()
+	%stream = tempref(new ScriptObject()
 	{
 		class = "FileStream";
 
@@ -44,7 +44,7 @@ function open(%file, %mode, %endline, %silent)
 		maxline = -1;
 		curline = -1;
 		offset = -1;
-	};
+	} @ "\x08");
 
 	return %stream;
 }
@@ -69,7 +69,7 @@ function FileStream::__iter__(%this)
 		{
 			class = "Struct";
 			file = %this;
-		});
+		} @ "\x08");
 }
 
 function _iterfile_hasNext(%ctx)

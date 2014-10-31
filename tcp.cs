@@ -1,10 +1,10 @@
 function Socket()
 {
-	return new ScriptObject()
+	return tempref(new ScriptObject()
 	{
 		class = "Socket";
 		superClass = "EventEmitter";
-	};
+	} @ "\x08");
 }
 
 function Socket::onAdd(%this)

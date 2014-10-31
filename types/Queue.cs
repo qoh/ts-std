@@ -1,12 +1,12 @@
 function Queue(%seq, %refer)
 {
-	%queue = new ScriptObject()
+	%queue = tempref(new ScriptObject()
 	{
 		class = "QueueInstance";
 		index = 0;
 		count = 0;
 		_refer = %refer;
-	};
+	} @ "\x08");
 
 	if (%seq !$= "")
 		%queue.push_all(%seq);
