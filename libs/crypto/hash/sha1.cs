@@ -1,23 +1,26 @@
-$sha1_h0 = 0x67452301;
-$sha1_h1 = 0xEFCDAB89;
-$sha1_h2 = 0x98BADCFE;
-$sha1_h3 = 0x10325476;
-$sha1_h4 = 0xC3D2E1F0;
-
 function rotl(%value, %shift)
 {
 	return (%value << %shift) | (%value >> (32 - %value));
 }
 
-function sha1_(%bits)
+function sha1_(%bytes) // sha1() is, of course, used
 {
+	if (%bytes.class $= "BitArray")
+		%bytes = ByteArray(%bytes);
+	else if (%bytes.class !$= "ByteArray")
+		%bytes = ByteArray::fromString(%bytes);
+
 	%sha1 = createSHA1();
 	%sha1.begin();
-	%sha1.update(%bits);
-	return %sha1.hexdigest();
+	%sha1.update(%bytes);
+
+	%digest = %sha1.hexdigest();
+	%sha1.delete();
+
+	return %digest;
 }
 
-function createSHA1() // sha1() is, of course, used
+function createSHA1()
 {
 	return tempref(new ScriptObject()
 	{
@@ -36,29 +39,23 @@ function SHA1::begin(%this)
 	if (isObject(%this.buf))
 		unref(%this.buf);
 
-	%this.buf = ref(BitArray());
+	%this.buf = ref(ByteArray());
 	%this.idx = 0;
 }
 
-function SHA1::update(%this, %chunk)
+function SHA1::update(%this, %bytes)
 {
-	// if (%chunk.class !$= "BitArray" || %chunk.size != 512)
-	// {
-	// 	console.error("chunk must be 512-bit BitArray");
-	// 	return 0;
-	// }
-
-	if (%chunk !$= "")
+	if (%bytes !$= "")
 	{
-		if (%chunk.class $= "ByteArray")
-			%chunk = BitArray(%chunk);
+		if (%bytes.class $= "BitArray")
+			%bytes = ByteArray(%bytes);
 
 		// this is bad
 		%this.buf.concat(%chunk);
 	}
 
 	// really bad.
-	while (%this.buf.size - %this.idx * 512 >= 512)
+	while (%this.buf.size - %this.idx * 64 >= 64)
 	{
 		for (%i = 0; %i < 16; %i++)
 			%w[%i] = %this.buf.int[%this.idx * 16 + %i];
@@ -77,6 +74,7 @@ function SHA1::update(%this, %chunk)
 			if (%i < 20)
 			{
 				%f = (%b & %c) | ((~%b) & %d);
+				//%f = %d ^ ( %b & (%c ^ %d));
 				%k = 0x5A827999;
 			}
 			else if (%i < 40)
@@ -118,13 +116,10 @@ function SHA1::update(%this, %chunk)
 function SHA1::digest(%this)
 {
 	%len = %this.buf.size;
-	%this.buf.append(1);
+	%this.buf.append(0x80);
 
-	while ((%this.buf.size - %this.idx * 512 - 448) % 512 != 0)
-	{
-		%concats++;
-		%this.buf.append(0);
-	}
+	while ((%this.buf.size - %this.idx * 64 - 56) % 64 != 0)
+		%this.buf.append(0x00);
 
 	// need to actually append a 64-bit integer here
 	%this.buf.appendInt(0);
@@ -132,19 +127,19 @@ function SHA1::digest(%this)
 
 	%this.update("");
 
-	%bits = BitArray();
-	%bits.appendInt(%this.h0);
-	%bits.appendInt(%this.h1);
-	%bits.appendInt(%this.h2);
-	%bits.appendInt(%this.h3);
-	%bits.appendInt(%this.h4);
-	return %bits;
+	%bytes = ByteArray();
+	%bytes.appendInt(%this.h0);
+	%bytes.appendInt(%this.h1);
+	%bytes.appendInt(%this.h2);
+	%bytes.appendInt(%this.h3);
+	%bytes.appendInt(%this.h4);
+	return %bytes;
 }
 
 function SHA1::hexdigest(%this)
 {
-	%bits = %this.digest();
-	%digest = %bits.toBase16();
-	%bits.delete();
+	%bytes = %this.digest();
+	%digest = %bytes.toBase16();
+	%bytes.delete();
 	return %digest;
 }

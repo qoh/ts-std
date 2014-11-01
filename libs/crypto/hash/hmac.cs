@@ -1,10 +1,17 @@
-function HMAC(%bits, %key, %hash)
+function HMAC(%bytes, %key, %hash)
 {
+	if (%bytes.class $= "BitArray")
+		%bytes = ByteArray(%bytes);
+	else if (%bytes.class !$= "ByteArray")
+		%bytes = ByteArray::fromString(%bytes);
+
 	%hmac = createHMAC();
 	%hmac.begin(%key, %hash);
-	%hmac.update(%bits);
+	%hmac.update(%bytes);
+
 	%digest = %hmac.hexdigest();
 	%hmac.delete();
+
 	return %digest;
 }
 
@@ -42,9 +49,12 @@ function HMAC::begin(%this, %key, %hash)
 
 	if (%key !$= "")
 	{
-		%key = BitArray(ByteArray::fromString(%key));
+		if (%key.class $= "BitArray")
+			%key = ByteArray(%key);
+		else if (%key.class !$= "ByteArray")
+			%key = ByteArray::fromString(%key);
 
-		if (%key.size >= 512)
+		if (%key.size >= 64)
 		{
 			%this.hash.begin();
 			%this.hash.update(%key);
@@ -53,10 +63,6 @@ function HMAC::begin(%this, %key, %hash)
 
 		%inner = ByteArray();
 		%outer = ByteArray();
-
-		// this is really, really bad and probably doesn't even work.
-		%key.class = "ByteArray";
-		%key.size >>= 3;
 
 		for (%i = 0; %i < %key.size; %i++)
 		{
@@ -68,6 +74,7 @@ function HMAC::begin(%this, %key, %hash)
 		if (%key.size < 64)
 		{
 			%tmp = 64 - %key.size;
+
 			for (%i = 0; %i < %tmp; %i++)
 			{
 				%inner.append(0x36);
@@ -75,11 +82,11 @@ function HMAC::begin(%this, %key, %hash)
 			}
 		}
 
-		%this.outer = ref(BitArray(%outer));
+		%this.outer = ref(%outer);
 	}
 
 	%this.hash.begin();
-	%this.hash.update(BitArray(%inner));
+	%this.hash.update(%inner);
 
 	return 1;
 }
@@ -92,9 +99,11 @@ function HMAC::update(%this, %bits)
 function HMAC::digest(%this)
 {
 	%inner = %this.hash.digest();
+
 	%this.hash.begin();
 	%this.hash.update(%this.outer);
 	%this.hash.update(%inner);
+	
 	return %this.hash.digest();
 }
 

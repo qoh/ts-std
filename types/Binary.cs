@@ -30,7 +30,24 @@ function ByteArray(%init)
 	} @ "\x08");
 
 	if (%init !$= "")
-		%array.concat(%init);
+	{
+		if (%init.class $= "BitArray")
+		{
+			%array.size = %init.size >> 3;
+
+			for (%i = %init.size - 1; %i >= 0; %i -= 8)
+			{
+				%value = 0;
+
+				for (%j = 0; %j < 8; %j++)
+					%value |= %init.get((%i - %j) | 0) << %j;
+
+				%array.set(%i >> 3, %value);
+			}
+		}
+		else
+			%array.concat(%init);
+	}
 
 	return %array;
 }
@@ -117,6 +134,12 @@ function ByteArray::appendChar(%this, %chr)
 	return %this.append(ord(%chr));
 }
 
+function ByteArray::appendInt(%this, %value)
+{
+	for (%i = 3; %i >= 0; %i--)
+		%this.append((%value >> (%i << 3)) & 0xFF);
+}
+
 function ByteArray::concat(%this, %seq)
 {
 	if (assert(%iter = iter(%seq), "seq is not iterable"))
@@ -154,7 +177,7 @@ function ByteArray::toBase16(%this)
 
 		%str =
 			getSubStr("0123456789abcdef", %value >> 4, 1) @
-			getSubStr("0123456789abcdef", %value  & 3, 1) @
+			getSubStr("0123456789abcdef", %value & 15, 1) @
 			%str;
 	}
 
