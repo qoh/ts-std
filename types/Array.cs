@@ -1,14 +1,13 @@
-function Array(%iterable, %refer)
+function Array(%seq)
 {
 	%array = tempref(new ScriptObject()
 	{
 		class = "ArrayInstance";
 		length = 0;
-		_refer = %refer;
 	} @ "\x08");
 
-	if (%iterable !$= "")
-		%array.concat(%iterable);
+	if (%seq !$= "")
+		%array.concat(%seq);
 
 	return %array;
 }
@@ -27,7 +26,6 @@ function Array::fromArgs(
 	{
 		class = "ArrayInstance";
 		length = %length;
-		_refer = 1;
 	} @ "\x08");
 
 	for (%i = 0; %i < %length; %i++)
@@ -36,7 +34,7 @@ function Array::fromArgs(
 	return %array;
 }
 
-function Array::split(%text, %separator, %refer)
+function Array::split(%text, %separator)
 {
 	if (%separator $= "")
 		%separator = " ";
@@ -45,7 +43,6 @@ function Array::split(%text, %separator, %refer)
 	{
 		class = "ArrayInstance";
 		length = 0;
-		_refer = %refer;
 	} @ "\x08");
 
 	while (%text !$= "")
@@ -59,11 +56,8 @@ function Array::split(%text, %separator, %refer)
 
 function ArrayInstance::onRemove(%this)
 {
-	if (%this._refer)
-	{
-		for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
-			unref(%this.value[%i]);
-	}
+	for (%i = 0; %i < %this.length; %i++)
+		unref(%this.value[%i]);
 }
 
 function ArrayInstance::__eq__(%this, %value)
@@ -71,7 +65,7 @@ function ArrayInstance::__eq__(%this, %value)
 	if (%value.class !$= %this.class || %value.length != %this.length)
 		return 0;
 
-	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
+	for (%i = 0; %i < %this.length; %i++)
 	{
 		if (!eq(%value.value[%i], %this.value[%i]))
 			return 0;
@@ -82,15 +76,10 @@ function ArrayInstance::__eq__(%this, %value)
 
 function ArrayInstance::__iter__(%this)
 {
-	%iter = ArrayIterator(%this.length, %this._refer);
+	%iter = ArrayIterator(%this.length);
 
-	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
-	{
-		if (%this._refer)
-			ref(%this.value[%i]);
-
-		%iter.value[%i] = %this.value[%i];
-	}
+	for (%i = 0; %i < %this.length; %i++)
+		%iter.value[%i] = ref(%this.value[%i]);
 
 	return %iter;
 }
@@ -118,9 +107,9 @@ function ArrayInstance::__add__(%this, %other)
 
 function ArrayInstance::__mul__(%this, %n)
 {
-	%array = Array("", %this._refer);
+	%array = Array();
 
-	for (%i = 0; %i < %n; %i = (%i + 1) | 0)
+	for (%i = 0; %i < %n; %i++)
 		%array.concat();
 
 	return %array;
@@ -128,17 +117,23 @@ function ArrayInstance::__mul__(%this, %n)
 
 function ArrayInstance::copy(%this)
 {
-	return Array(%this, %this._refer);
+	%array = tempref(new ScriptObject()
+	{
+		class = "ArrayInstance";
+		length = %this.length;
+	} @ "\x08");
+
+	for (%i = 0; %i < %this.length; %i++)
+		%array.value[%i] = ref(%this.value[%i]);
+
+	return %array;
 }
 
 function ArrayInstance::clear(%this)
 {
-	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
+	for (%i = 0; %i < %this.length; %i++)
 	{
-		if (%this._refer)
-			unref(%this.value[%i]);
-
-		%this.value[%i] = "";
+		%this.value[%i] = unref(%this.value[%i]);
 		%this.type[%i] = "";
 	}
 
@@ -148,12 +143,9 @@ function ArrayInstance::clear(%this)
 
 function ArrayInstance::append(%this, %value, %type)
 {
-	if (%this._refer)
-		ref(%value);
-
-	%this.value[%this.length] = %value;
+	%this.value[%this.length] = ref(%value);
 	%this.type[%this.length] = %type;
-	%this.length = (%this.length + 1) | 0;
+	%this.length++;
 
 	return %this;
 }
@@ -163,17 +155,14 @@ function ArrayInstance::insert(%this, %index, %value, %type)
 	if (assert(%index >= 0 && %index < %this.length, "invalid array index"))
 		return;
 
-	if (%this._refer)
-		ref(%value);
-
-	for (%i = %this.length; %i > %index; %i = (%i - 1) | 0)
+	for (%i = %this.length; %i > %index; %i--)
 	{
-		%this.value[%i] = %this.value[(%i - 1) | 0];
-		%this.type[%i] = %this.type[(%i - 1) | 0];
+		%this.value[%i] = %this.value[%i - 1];
+		%this.type[%i] = %this.type[%i - 1];
 	}
 
 	%this.length = (%this.length + 1) | 0;
-	%this.value[%index] = %value;
+	%this.value[%index] = ref(%value);
 	%this.type[%index] = %type;
 
 	return %this;
@@ -192,19 +181,15 @@ function ArrayInstance::pop(%this, %i)
 	if (assert(%i >= 0 && %i <= %this.length, "Invalid array index"))
 		return "";
 
-	%value = %this.value[%i];
+	%value = passref(%this.value[%i]);
 
-	if (%this._refer)
-		unref(%value);
-
-	for (0; %i < %this.length; %i = (%i + 1) | 0)
+	for (0; %i < %this.length; %i++)
 	{
-		%this.value[%i] = %this.value[(%i + 1) | 0];
-		%this.type[%i] = %this.type[(%i + 1) | 0];
+		%this.value[%i] = %this.value[%i + 1];
+		%this.type[%i] = %this.type[%i + 1];
 	}
 
-	%this.length = (%this.length - 1) | 0;
-	%this.value[%this.length] = "";
+	%this.value[%this.length--] = "";
 	%this.type[%this.length] = "";
 
 	return %value;
@@ -212,7 +197,7 @@ function ArrayInstance::pop(%this, %i)
 
 function ArrayInstance::find(%this, %value)
 {
-	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
+	for (%i = 0; %i < %this.length; %i++)
 	{
 		if (eq(%value, %this.value[%i]))
 			return %i;
@@ -230,10 +215,10 @@ function ArrayInstance::count(%this, %value)
 {
 	%n = 0;
 
-	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
+	for (%i = 0; %i < %this.length; %i++)
 	{
 		if (eq(%value, %this.value[%i]))
-			%n = (%n + 1) | 0;
+			%n++;
 	}
 
 	return %n;
@@ -278,33 +263,42 @@ function ArrayInstance::reverse(%this)
 {
 	%max = (%this.length - 2) >> 1;
 
-	for (%i = 0; %i < %max; %i = (%i + 1) | 0)
-		%this.swap(%i, (%this.length - 1 - %i) | 0);
+	for (%i = 0; %i < %max; %i++)
+		%this.swap(%i, %this.length - 1 - %i);
 
+	return %this;
+}
+
+function ArrayInstance::shuffle(%this)
+{
+	%length = %this.length - 1;
+
+	for (%i = 0; %i <= %length; %i++)
+		%this.swap(getRandom(%i, %length), %i); // should use Random lib
+}
+
+// %key does not work correctly in some cases
+// also seems to somehow destroy objects in the array at random
+// do not use
+function ArrayInstance::sort(%this, %key)
+{
+	_qsort(%this, 0, %this.length - 1, %key);
 	return %this;
 }
 
 function ArrayInstance::map(%this, %target)
 {
-	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
-	{
-		if (%this._refer)
-			unref(%this.value[%i]);
-
-		%this.value[%i] = dynCall(%target, %this.value[%i]);
-
-		if (%this._refer)
-			ref(%this.value[%i]);
-	}
+	for (%i = 0; %i < %this.length; %i++)
+		%this.value[%i] = ref(dynCall(%target, passref(%this.value[%i])));
 
 	return %this;
 }
 
 function ArrayInstance::filter(%this, %target)
 {
-	%result = Array("", %this._refer);
+	%result = Array();
 
-	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
+	for (%i = 0; %i < %this.length; %i++)
 	{
 		if (dynCall(%target, %this.value[%i]))
 			%result.append(%this.value[%i]);
@@ -313,37 +307,33 @@ function ArrayInstance::filter(%this, %target)
 	return %result;
 }
 
-function ArrayInstance::search(%this, %value, %comparator)
+function ArrayInstance::search(%this, %value, %key)
 {
-	return %this._binarySearch(%value, %comparator, 0, %this.length - 1);
+	if (%key !$= "")
+		%value = dynCall(%key, %value);
+	return %this._binarySearch(%value, %key, 0, %this.length - 1);
 }
 
-function ArrayInstance::_binarySearch(%this, %value, %comparator, %low, %high)
+function ArrayInstance::_binarySearch(%this, %value, %key, %low, %high)
 {
-	%mid = ((%high - %low) >> 1) + %low;
-	%res = call(%comparator, %this.value[%mid], %value);
+	// this currently crashes the engine
+	return 0;
+	%mid = (((%high - %low) >> 1) + %low) | 0;
+	%res = cmp(%key $= "" ? %this.value[%mid] : dynCall(%key, %this.value[%mid]), %value);
 
 	if (%high < %low)
-		return %mid + 1;
+		return (%mid + 1) | 0;
 
 	if (%res > 0)
-		return %this._binarySearch(%This, %value, %comparator, %low, %mid - 1);
+		return %this._binarySearch(%this, %value, %key, %low, (%mid - 1) | 0);
 	else if (%res < 0)
-		return %this._binarySearch(%This, %value, %comparator, %mid + 1, %high);
+		return %this._binarySearch(%this, %value, %key, (%mid + 1) | 0, %high);
 	else
 		return %mid;
 }
 
-function ArrayInstance::sort(%this, %cmp)
+function ArrayInstance::appendSorted(%this, %value, %key)
 {
-	if (%cmp $= "")
-		%cmp = "cmp";
-
-	_qsort(%this, 0, %this.length);
-}
-
-function ArrayInstance::appendSorted(%this, %value, %comparator)
-{
-	%index = %this.search(%value, %comparator);
+	%index = %this.search(%value, %key);
 	return %this.insert(%index, %value);
 }

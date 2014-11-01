@@ -1,75 +1,63 @@
-function Queue(%seq, %refer)
+function Queue(%seq)
 {
 	%queue = tempref(new ScriptObject()
 	{
-		class = "QueueInstance";
+		class = "Queue";
 		index = 0;
 		count = 0;
-		_refer = %refer;
 	} @ "\x08");
 
 	if (%seq !$= "")
-		%queue.push_all(%seq);
+		%queue.concat(%seq);
 
 	return %queue;
 }
 
-function QueueInstance::onRemove(%this)
+function Queue::onRemove(%this)
 {
-	if (%this._refer)
-	{
-		for (%i = 0; %i < %this.count; %i = (%i + 1) | 0)
-			unref(%this.value[(%this.index + %i) | 0]);
-	}
+	for (%i = 0; %i < %this.count; %i = (%i + 1) | 0)
+		unref(%this.value[(%this.index + %i) | 0]);
 }
 
-function QueueInstance::__len__(%this)
+function Queue::__len__(%this)
 {
 	return %this.count;
 }
 
-function QueueInstance::__iter__(%this)
+function Queue::__iter__(%this)
 {
-	%iter = ArrayIterator(%this.count, %this._refer);
+	%iter = ArrayIterator(%this.count);
 
 	for (%i = 0; %i < %this.count; %i = (%i + 1) | 0)
 	{
 		%index = (%this.index + %i) | 0;
-
-		if (%this._refer)
-			ref(%this.value[%index]);
-
-		%iter.value[%index] = %this.value[%index];
+		%iter.value[%i] = ref(%this.value[%index]);
 	}
 
 	return %iter;
 }
 
-function QueueInstance::__repr__(%this)
+function Queue::__repr__(%this)
 {
-	return "Queue(" @ join(imap(%this, repr), ", ") @ ")";
+	return "Queue(" @ join(imap(repr, %this), ", ") @ ")";
 }
 
-function QueueInstance::copy(%this)
+function Queue::copy(%this)
 {
-	return Queue(%this, %this._refer);
+	return Queue(%this);
 }
 
-function QueueInstance::empty(%this)
+function Queue::empty(%this)
 {
 	return %this.count == 0;
 }
 
-function QueueInstance::clear(%this)
+function Queue::clear(%this)
 {
 	for (%i = 0; %i < %this.count; %i = (%i + 1) | 0)
 	{
 		%index = (%this.index + %i) | 0;
-
-		if (%this._refer)
-			unref(%this.value[%index]);
-
-		%this.value[%index] = "";
+		%this.value[%index] = unref(%this.value[%index]);
 	}
 
 	%this.count = 0;
@@ -78,18 +66,15 @@ function QueueInstance::clear(%this)
 	return %this;
 }
 
-function QueueInstance::push(%this, %value)
+function Queue::push(%this, %value)
 {
-	if (%this._refer)
-		ref(%value);
-
-	%this.value[%this.count] = %value;
+	%this.value[%this.count] = ref(%value);
 	%this.count = (%this.count + 1) | 0;
 
 	return %this;
 }
 
-function QueueInstance::push_all(%this, %seq)
+function Queue::concat(%this, %seq)
 {
 	if (assert(%iter = iter(%seq), "seq is not iterable"))
 		return %this;
@@ -101,17 +86,13 @@ function QueueInstance::push_all(%this, %seq)
 	return %this;
 }
 
-function QueueInstance::pop(%this)
+function Queue::pop(%this)
 {
 	if (%this.count < 1)
 		return "";
 
 	%value = %this.value[%this.index];
-
-	if (%this._refer)
-		unref(%value);
-
-	%this.value[%this.index] = "";
+	%this.value[%this.index] = unref(%value);
 
 	%this.index = (%this.index + 1) | 0;
 	%this.count = (%this.count - 1) | 0;
@@ -122,7 +103,7 @@ function QueueInstance::pop(%this)
 	return %value;
 }
 
-function QueueInstance::peek(%this)
+function Queue::peek(%this)
 {
 	if (%this.count < 1)
 		return "";

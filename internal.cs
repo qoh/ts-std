@@ -1,28 +1,29 @@
-// function _qswap(%v, %i, %j)
-// {
-// 	%t = %v.value[%i];
-// 	%v.value[%i] = %v.value[%j];
-// 	%v.value[%j] = %t;
-// }
-
-function _qsort(%v, %left, %right, %cmp)
+function _qsort(%seq, %left, %right, %key)
 {
 	if (%left >= %right)
 		return;
 
-	//_qswap(%v, %left, (%left + %right) >> 1);
-	%v.swap(%left, (%left + %right) >> 1);
+	%seq.swap(%left, mFloor((%left + %right) / 2));
 	%last = %left;
 
-	for (%i = %left + 1; %i <= %right; %i++)
-		if (dynCall(%cmp, %v.value[%left], %v.value[%right]) < 0)
-			//_qswap(%v, %last++, %i);
-			%v.swap(%last++, %i);
+	for (%i = %left+1; %i <= %right; %i++)
+	{
+		%a = %seq.value[%i];
+		%b = %seq.value[%left];
 
-	//_qswap(%v, %left, %last);
-	%v.swap(%left, %last);
-	_qsort(%v, %left, %last - 1, %cmp);
-	_qsort(%v, %last + 1, %right, %cmp);
+		if (%key !$= "")
+		{
+			%a = dynCall(%key, %a);
+			%b = dynCall(%key, %b);
+		}
+
+		if (cmp(%a, %b) < 0)
+			%seq.swap(%last++, %i);
+	}
+
+	%seq.swap(%left, %last);
+	_qsort(%seq, %left, %last-1, %key);
+	_qsort(%seq, %last+1, %right, %key);
 }
 
 function _safeid(%attr)

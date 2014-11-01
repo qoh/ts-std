@@ -85,7 +85,7 @@ function dynCall(%func,
 	%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18)
 {
 	if (%func.superClass $= "Callable")
-		return %func.call(
+		return %func.dynCall(
 			%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
 			%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18);
 
@@ -128,7 +128,7 @@ function dynCall(%func,
 function dynCallArgs(%func, %args)
 {
 	if (%func.superClass $= "Callable")
-		return %func.callArgs(%args);
+		return %func.dynCallArgs(%args);
 
 	if (!isFunction(%func))
 		return "";
@@ -218,6 +218,18 @@ function lambda(%code)
 		args_after = ref(Array("", 1));
 		code = %code;
 	} @ "\x08");
+}
+
+function attribute(%name)
+{
+	%tuple = tempref(new ScriptObject()
+	{
+		class = "TupleInstance";
+		length = 1;
+		value0 = %name;
+	} @ "\x08");
+
+	return callableObj("getAttribute").applyArgsAfter(%tuple);
 }
 
 
@@ -318,17 +330,17 @@ function Callable::applyArgsAfter(%this, %args)
 	return %callable;
 }
 
-function Callable::call(%this,
+function Callable::dynCall(%this,
 	%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
 	%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18)
 {
-	return %this.callArgs(Tuple::fromArgs(
+	return %this.dynCallArgs(Tuple::fromArgs(
 		%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
 		%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18
 	));
 }
 
-function Callable::callArgs()
+function Callable::dynCallArgs()
 {
 	return "";
 }
@@ -361,7 +373,7 @@ function PlainCallable::isValid(%this)
 	return isFunction(%this.name);
 }
 
-function PlainCallable::callArgs(%this, %args)
+function PlainCallable::dynCallArgs(%this, %args)
 {
 	%args = %this._getArgs(%args);
 	%result = dynCallArgs(%this.name, %args);
@@ -398,7 +410,7 @@ function ScopeCallable::isValid(%this)
 	return isFunction(%this.scope, %this.name);
 }
 
-function ScopeCallable::callArgs(%this, %args)
+function ScopeCallable::dynCallArgs(%this, %args)
 {
 	// improve this
 	%args = %this._getArgs(%args);
@@ -447,7 +459,7 @@ function ObjectCallable::isValid(%this)
 	return 1; // no way to tell.
 }
 
-function ObjectCallable::callArgs(%this, %args_mid)
+function ObjectCallable::dynCallArgs(%this, %args_mid)
 {
 	if (%this.args.length + %args_mid.length + %this.args_after.length < 1)
 	{
@@ -455,35 +467,15 @@ function ObjectCallable::callArgs(%this, %args_mid)
 		return "";
 	}
 
-	%args = new ScriptObject()
-	{
-		length = (%this.args.length + %args_mid.length + %this.args_after.length) - 1;
-	};
+	%args = %this.args.copy();
+	%args.concat(%args_mid);
+	%args.concat(%this.args_after);
+	%iter = iter(%args);
 
-	// this is like the worst way of doing this
-	for (%i = 0; %i < %this.args.length; %i++)
-	{
-		if (%i)
-			%args.value[%i - 1] = %this.args.value[%i];
-		else
-			%target = %this.args.value0;
-	}
-
-	for (%j = 0; %j < %args_mid.length; %i++ && %j++)
-	{
-		if (%i)
-			%args.value[%i] = %args_mid.value[%j];
-		else
-			%target = %args_mid.value0;
-	}
-
-	for (%j = 0; %j < %this.args_after.length; %i++ && %j++)
-	{
-		if (%i)
-			%args.value[%i] = %this.args_after.value[%j];
-		else
-			%target = %this.args_after.value0;
-	}
+	%args.delete(); // too hacky
+	%target = %iter.next();
+	%args = Tuple(%iter);
+	//%iter.delete();
 
 	%result = %target.callArgs(%this.name, %args);
 	%args.delete();
@@ -519,7 +511,7 @@ function CodeCallable::isValid(%this)
 	return 1;
 }
 
-function CodeCallable::callArgs(%this, %args)
+function CodeCallable::dynCallArgs(%this, %args)
 {
 	%args = %this._getArgs(%args);
 

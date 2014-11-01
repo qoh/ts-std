@@ -2,7 +2,7 @@ if (!isObject(ts_test))
 {
 	new ScriptObject(ts_test)
 	{
-		tests = Map(1);
+		tests = ref(Map());
 	};
 }
 

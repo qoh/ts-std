@@ -2,15 +2,13 @@ function Map()
 {
 	return tempref(new ScriptObject()
 	{
-		class = "MapInstance";
+		class = "Map";
 	} @ "\x08");
 }
 
-function Map::fromPairs(%iterable)
+function Map::fromPairs(%seq)
 {
-	%iter = iter(%iterable);
-
-	if (assert(%iter, "input not iterable"))
+	if (assert(%iter = iter(%seq), "seq is not iterable"))
 		return 0;
 
 	%map = Map();
@@ -25,14 +23,12 @@ function Map::fromPairs(%iterable)
 	return %map;
 }
 
-function Map::fromKeys(%iterable, %value, %refer)
+function Map::fromKeys(%seq, %value)
 {
-	%iter = iter(%iterable);
-
-	if (assert(%iter, "input not iterable"))
+	if (assert(%iter = iter(%seq), "seq is not iterable"))
 		return 0;
 
-	%map = Map(%refer);
+	%map = Map();
 
 	// maybe should concat %iter to %map.__keys instead?
 	while (%iter.hasNext())
@@ -53,12 +49,12 @@ function Map::__isSafe(%key)
 	);
 }
 
-function MapInstance::onAdd(%this)
+function Map::onAdd(%this)
 {
 	%this.__keys = ref(Array());
 }
 
-function MapInstance::onRemove(%this)
+function Map::onRemove(%this)
 {
 	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
 		unref(%this.__value[%this.__keys.value[%i]]);
@@ -66,78 +62,82 @@ function MapInstance::onRemove(%this)
 	unref(%this.__keys);
 }
 
-function MapInstance::__repr__(%this)
+function Map::__repr__(%this)
 {
-	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
+	%length = (%keys = %this.__keys).length;
+
+	for (%i = 0; %i < %length; %i = (%i + 1) | 0)
 	{
 		if (%i)
 			%text = %text @ ", ";
 
-		%text = %text @ repr(%this.__keys.value[%i]) @ ": ";
-		%text = %text @ repr(%this.__value[%this.__keys.value[%i]]);
+		if (_safeid(%key = %keys.value[%i]))
+			%text = %text @ %key;
+		else
+			%text = %text @ repr(%key);
+
+		%text = %text @ ": " @ repr(%this.__value[%key]);
 	}
 
 	return "{" @ %text @ "}";
 }
 
-function MapInstance::__eq__(%this, %other)
+function Map::__eq__(%this, %other)
 {
-	if (%this.class != %other.class)
-		return 0;
-
-	if (%this.__keys.length != %other.__keys.length)
+	if (%this.class !$= %other.class || %this.__keys.length != %other.__keys.length)
 		return 0;
 
 	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
 	{
-		if (!%other.__keys.contains(%this.__keys.value[%i]))
+		if (!%other.__keys.contains(%key = %this.__keys.value[%i]))
 			return 0;
 
-		if (!eq(%this.__value[%this.__keys.value[%i]], %other.__value[%this.__keys.value[%i]]))
+		if (!eq(%this.__value[%key], %other.__value[%key]))
 			return 0;
 	}
 
 	return 1;
 }
 
-function MapInstance::__iter__(%this)
+function Map::__iter__(%this)
 {
-	%iter = ArrayIterator(%this.__keys.length, 1);
+	%iter = ArrayIterator(%length = (%keys = %this.__keys).length);
 
-	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
-		%iter.value[%i] = Tuple::fromArgs(%this.__keys.value[%i],
-							%this.__value[%this.__keys.value[%i]]);
+	for (%i = 0; %i < %length; %i = (%i + 1) | 0)
+		%iter.value[%i] = ref(Tuple::fromArgs(%key = %keys.value[%i], %this.__value[%key]));
 
 	return %iter;
 }
 
-function MapInstance::copy(%this)
+function Map::copy(%this)
 {
 	%map = Map();
+	%length = (%keys = %this.__keys).length;
 
-	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
-		%map.set(%this.__keys.value[%i], %this.__value[%this.__keys.value[%i]], %this.__type[%this.__keys.value[%i]]);
+	for (%i = 0; %i < %length; %i = (%i + 1) | 0)
+		%map.set(%key = %keys.value[%i], %this.__value[%key], %this.__type[%key]);
 
 	return %map;
 }
 
-function MapInstance::clear(%this)
+function Map::clear(%this)
 {
-	for (%i = 0; %i < %this.__keys.length; %i = (%i + 1) | 0)
+	%length = (%keys = %this.__keys).length;
+
+	for (%i = 0; %i < %length; %i = (%i + 1) | 0)
 	{
-		%key = %this.__keys.value[%i];
-		
-		if (Map::__isSafe(%key))
+		if (Map::__isSafe(%key = %keys.value[%i]))
 			%this.setAttribute(%key, "");
 
 		%this.__value[%key] = unref(%this.__value[%key]);
 		%this.__type[%key] = "";
 	}
 
-	%this.__keys.clear();
+	%keys.clear();
+	return %this;
 }
 
-function MapInstance::get(%this, %key, %default)
+function Map::get(%this, %key, %default)
 {
 	if (%this.__keys.contains(%key))
 		return %this.__value[%key];
@@ -145,12 +145,12 @@ function MapInstance::get(%this, %key, %default)
 	return %default;
 }
 
-function MapInstance::getKeyType(%this, %key)
+function Map::getKeyType(%this, %key)
 {
 	return %this.__type[%key];
 }
 
-function MapInstance::set(%this, %key, %value, %type)
+function Map::set(%this, %key, %value, %type)
 {
 	if (!%this.__keys.contains(%key))
 		%this.__keys.append(%key);
@@ -158,15 +158,15 @@ function MapInstance::set(%this, %key, %value, %type)
 		unref(%this.__value[%key]);
 
 	%this.__value[%key] = ref(%value);
-	%this.__type[%key] = %value;
+	%this.__type[%key] = %type;
 
 	if (Map::__isSafe(%key))
 		%this.setAttribute(%key, %value);
 
-	return %value;
+	return %this;
 }
 
-function MapInstance::setDefault(%this, %key, %value, %type)
+function Map::setDefault(%this, %key, %value, %type)
 {
 	if (!%this.__keys.contains(%key))
 		%this.set(%key, %value, %type);
@@ -174,14 +174,13 @@ function MapInstance::setDefault(%this, %key, %value, %type)
 	return %this.__value[%key];
 }
 
-function MapInstance::pop(%this, %key, %default)
+function Map::pop(%this, %key, %default)
 {
 	%index = %this.__keys.find(%key);
 
 	if (%index != -1)
 	{
-		%value = %this.__value[%key];
-		%this.__value[%key] = unref(%this.__value[%key]);
+		%this.__value[%key] = unref(%value = %this.__value[%key]);
 		%this.__type[%key] = "";
 
 		if (Map::__isSafe(%key))
@@ -194,18 +193,22 @@ function MapInstance::pop(%this, %key, %default)
 	return %default;
 }
 
-function MapInstance::patch(%this, %map)
+function Map::patch(%this, %map)
 {
-	for (%i = 0; %i < %map.__keys.length; %i = (%i + 1) | 0)
-		%this.set(%map.__keys.value[%i], %map.__value[%map.__keys.value[%i]], %map.__type[%map.__keys.value[%i]]);
+	%length = (%keys = %map.__keys).length;
+
+	for (%i = 0; %i < %length; %i = (%i + 1) | 0)
+		%this.set(%key = %keys.value[%i], %map.__value[%key], %map.__type[%key]);
+
+	return %this;
 }
 
-function MapInstance::keys(%this)
+function Map::keys(%this)
 {
 	return %this.__keys.copy();
 }
 
-function MapInstance::exists(%this, %key)
+function Map::exists(%this, %key)
 {
 	return %this.__keys.contains(%key);
 }

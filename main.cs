@@ -31,36 +31,33 @@ exec("./generic.cs");
 exec("./iterators.cs");
 exec("./callable.cs");
 exec("./string.cs");
-//exec("./class.cs");
-exec("./class_new.cs");
-exec("./event.cs");
+exec("./class.cs");
 exec("./console.cs");
 exec("./tcp.cs");
 exec("./file.cs");
 
-exec("./types/Struct.cs");
-exec("./types/Array.cs");
-exec("./types/ByteArray.cs");
-exec("./types/Map.cs");
-exec("./types/Stack.cs");
-exec("./types/Queue.cs");
-exec("./types/Tuple.cs");
-exec("./types/Set.cs");
-exec("./types/String.cs");
+exec("./types/Struct.cs");			// tested
+exec("./types/Array.cs");			// tested, %key does not work for sort()
+exec("./types/Binary.cs");			// tested
+exec("./types/EventEmitter.cs");	// tested, could do with some more
+exec("./types/Map.cs");				// tested
+exec("./types/Stack.cs");			// tested
+exec("./types/Queue.cs");			// tested
+exec("./types/Tuple.cs");			// tested
+exec("./types/Set.cs");				// tested, needs mathematical set operations
+
+class (TemporaryClass);
+	TemporaryClass.definePrivateAttribute("___temp");
+	TemporaryClass.___temp = 1;
+
+exec("./classes/Number.cs");
+exec("./classes/String.cs");
+exec("./classes/bignum/BigInteger.cs");
 
 exec("./libs.cs");
-
-//exec("./libs/json/main.cs");
-//exec("./libs/regex/main.cs");
-//exec("./libs/redis/main.cs");
 
 if (!$_::release)
 {
 	exec("./tests/main.cs");
 	exec("./tests/general.cs");
-}
-
-if ($_::last::test_libs)
-{
-	// _.require("");
 }

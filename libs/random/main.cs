@@ -133,6 +133,12 @@ exec("./diehard.cs");
 
 if (!isObject(Random))
 {
-	MersenneTwister().setName("Random");
-	Random.___constant = 1;
+	new ScriptObject("Random")
+	{
+		class = "MersenneTwister";
+		superClass = "RandomGenerator";
+		___constant = 1;
+	};
+	
+	Random.setSeed(getRealTime());
 }

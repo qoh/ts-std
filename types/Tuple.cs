@@ -53,7 +53,7 @@ function TupleInstance::onRemove(%this)
 
 function TupleInstance::__eq__(%this, %other)
 {
-	if (%other.class !$= "TupleInstance" || %other.length != %this.length)
+	if (%other.class !$= %this.class || %other.length != %this.length)
 		return 0;
 
 	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
@@ -67,7 +67,7 @@ function TupleInstance::__eq__(%this, %other)
 
 function TupleInstance::__iter__(%this)
 {
-	%iter = ArrayIterator(%this.length, 1);
+	%iter = ArrayIterator(%this.length);
 
 	for (%i = 0; %i < %this.length; %i = (%i + 1) | 0)
 		%iter.value[%i] = ref(%this.value[%i]);
@@ -120,7 +120,7 @@ function TupleInstance::__mul__(%this, %n)
 		%j = %this.length * %i;
 
 		for (%k = 0; %k < %this.length; %k = (%k + 1) | 0)
-			%tuple.value[%j + %k] = %this.value[%k];
+			%tuple.value[%j + %k] = ref(%this.value[%k]); // ref leak could occur here?
 	}
 
 	return %tuple;
