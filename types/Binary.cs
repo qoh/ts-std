@@ -118,6 +118,16 @@ function ByteArray::clear(%this)
 	return %this;
 }
 
+function ByteArray::pad(%this, %value, %length)
+{
+	%times = (%length - %this.size) | 0;
+
+	for (%i = 0; %i < %times; %i = (%i + 1) | 0)
+		%this.append(%value);
+
+	return %this;
+}
+
 function ByteArray::append(%this, %value)
 {
 	if (assert((%value | 0) $= %value && %value >= 0 && %value < 256, "value must integer where be 0 <= value < 256"))
@@ -167,6 +177,35 @@ function ByteArray::concatString(%this, %str)
 		%this.set((%i + %j) | 0, ord(getSubStr(%str, %j, 1)));
 	
 	return 1;
+}
+
+// slooooooooooooooooooooowwww
+// please use indexing instead
+function ByteArray::shiftBytesLeft(%this, %n)
+{
+	if (%n <= 0)
+		return %this;
+
+	%tmp = (%this.size - %n) | 0;
+
+	for (%i = 0; %i < %tmp; %i = (%i + 1) | 0)
+		%this.set(%i, %this.get((%i + %n) | 0));
+	
+	%size = %this.size;
+	%this.size = (%this.size - %n) | 0;
+
+	//if (%size & 31 != 0)
+	if (0) // this is gonna hog memory. maybe it's for the best when wanting to shift fast and clean later?
+	{
+		// these are almost guaranteed to not work
+		%i = ((%i >> 2) + 1) | 0;
+		%size = ((%size >> 2) + 1) | 0;
+
+		for (0; %i < %size; %i = (%i + 1))
+			%this.int[%i] = "";
+	}
+
+	return %this;
 }
 
 function ByteArray::toBase16(%this)

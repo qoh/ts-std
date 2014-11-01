@@ -1,3 +1,11 @@
+// todo:
+//   callableChain(a, b, c, d, ...)
+//   calls a with callableChain(b, c, d, ...)
+//
+//   function a(%done) { dyncall(%done); }
+//   function a(%done) { dyncall(%done); }
+
+
 // ====================================
 // Non-Callable-type general purpose interfaces to object methods.
 
@@ -206,6 +214,33 @@ function callableObj(%name)
 		args_after = ref(Array("", 1));
 		name = %name;
 	} @ "\x08");
+}
+
+function callableChain(
+	%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9,
+	%a10, %a11, %a12, %a13, %a14, %a15, %a16, %a17, %a18, %a19)
+{
+	for (%count = 20; %count > 0; %count--)
+	{
+		if (%a[%count - 1] !$= "")
+			break;
+	}
+
+	if (%count == 0)
+		return 0;
+
+	for (%i = %count - 1; %i >= 0; %i--)
+	{
+		if (%a[%i].superClass !$= "Callable")
+			%a[%i] = callable(%a[%i]);
+
+		if (%last)
+			%last = %a[%i].apply(%last);
+		else
+			%last = %a[%i];
+	}
+
+	return %last;
 }
 
 function lambda(%code)
